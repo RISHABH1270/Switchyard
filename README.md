@@ -1,10 +1,11 @@
 <div align="center">
 
-# Switchyard
+<img src="./assets/banner.svg" alt="Switchyard" width="100%"/>
 
-**A state-first reverse proxy in modern C++**
+<br/>
+<br/>
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-F59E0B?style=for-the-badge)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-3B82F6?style=for-the-badge)](LICENSE)
 [![C++](https://img.shields.io/badge/C%2B%2B-20-00599C?style=for-the-badge&logo=cplusplus&logoColor=white)](https://en.cppreference.com/w/cpp/20)
 [![Status](https://img.shields.io/badge/Status-Rung%200%20Planning-lightgrey?style=for-the-badge)](docs/ARCHITECTURE.md)
 [![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS-333?style=for-the-badge&logo=linux&logoColor=white)](#)
