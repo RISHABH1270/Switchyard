@@ -16,91 +16,95 @@
 
 ## The Problem
 
-**2:47 AM. PagerDuty fires. The mobile team pushed a config change to nginx to add a new upstream. Every WebSocket connection in production just dropped.**
+**Reverse proxies have hit a CPU ceiling.**
 
-The chat app disconnected mid-conversation. Live dashboards went blank. Uploads restarted from 0%. Mobile clients started hammering the reconnect endpoint, burning battery and eating capacity.
+nginx, HAProxy, and Envoy all share a lineage of design decisions made when 1 Gbps was fast and TLS was expensive to offload. On modern hardware — 100 Gbps NICs, servers with 64+ cores, HTTP/2 and mTLS everywhere — that lineage now bleeds CPU in three specific places:
 
-The change was one line in `nginx.conf`. The reload was "graceful." But the workers still hard-closed every long-lived connection after the drain timeout — because in nginx's world, a config reload means new worker processes, and the old ones eventually die.
+| Where CPU leaks | Why |
+|---|---|
+| **Syscall overhead** | All three still use `epoll`. Every request costs 4-6 syscalls. `io_uring` (Linux 5.1+) can amortize this to nearly one. |
+| **Userspace memory copies** | Each request byte gets memcpy'd 3-4 times: kernel → recv buffer → parsed struct → send buffer → kernel. On a busy proxy that's 30-50% of total CPU. |
+| **Userspace TLS record framing** | Encryption bytes bounce between userspace crypto libraries and kernel sockets. Kernel TLS (kTLS) can eliminate that bounce and go direct to the NIC. |
 
-This is what today's reverse proxies (nginx, HAProxy, Envoy) still leave on the table:
-
-| Pain point | What actually breaks | End-user symptom |
-|---|---|---|
-| Reload drops long-lived connections | New workers spawned; old ones drain and hard-close | WebSocket/SSE/gRPC streams die on every config change |
-| Upstream DNS goes stale | Hostnames resolved once at config load | 502 spikes for minutes after every K8s pod reschedule |
-| Cross-instance state fragments | Rate limits, sessions, TLS tickets are per-process | Users get 429s they don't deserve; carts randomly reset |
-| Observability gaps | Logs say what happened, not why or which phase | "App is slow" incidents last hours instead of minutes |
-| Retry storms | Naive retry-on-5xx with no budget | 1% partial outage becomes a 100% total outage |
-
-**The common thread:** every one of these is a failure of *state* — state that's thrown away, goes stale, isn't shared, or isn't observable.
+The result: a modern box that could push 100 Gbps of proxied traffic on paper delivers 30-50 Gbps in practice. The CPU is busy moving bytes, not serving requests. At scale this becomes fleet size × 2, latency × 2, cost × 2.
 
 ---
 
 ## The Thesis
 
-Switchyard treats **state as a first-class primitive.** Config, upstream DNS resolutions, health status, session cache, rate-limit counters, TLS tickets, connection pools — all of them are:
+Switchyard is a reverse proxy designed to eliminate all three of those CPU leaks from the ground up:
 
-- **Hot-swappable** — updated atomically without dropping in-flight requests or connections
-- **Shared** — replicated across proxy instances so users see consistent behavior
-- **Introspectable** — every piece of state readable at runtime via an admin API
+1. **`io_uring`-native reactor** — no epoll fallback on Linux. Every socket op flows through a shared submission queue. Multishot accept/recv where supported.
+2. **Zero-copy request/response path** — HTTP parser produces `HeaderView { offset, length }` records over the original recv buffer, never `std::string`. Forwarding uses `writev`, `splice`, and `io_uring SEND_ZC`. Body bytes never enter userspace when we can help it.
+3. **kTLS-first** — TLS record framing runs in the kernel from Rung 8 onward, not as a bolt-on. Handshakes happen in userspace (BoringSSL/OpenSSL), but everything after the handshake goes direct: userspace → kernel → NIC.
 
-Everything else (HTTP/1.1 parser, HTTP/2, TLS, LB algorithms, retries) is table stakes. The differentiator is that Switchyard was built with state-consistency as the core design principle, not bolted on after the fact.
+Nothing here is speculative — every technique exists in the Linux kernel today and is used by parts of the stack (Netflix's kTLS for video, Cloudflare's io_uring experiments, various zero-copy patents). What's missing is a general-purpose L7 reverse proxy that combines all three from day one.
+
+**The measurable claim Switchyard is committing to:**
+
+> Same job as nginx (HTTP/1.1 + HTTP/2 + TLS + LB + health + retries + observability). **30-50% less CPU** on identical hardware and workload. **Half the p99 latency**. Head-to-head benchmarks published in `bench/` and reproducible by anyone.
 
 ---
 
 ## Mental Model
 
-A reverse proxy is a mailroom clerk. Clients hand their packages (requests) to the clerk. The clerk reads the label (URL), picks the right desk (backend), delivers it, and brings the reply back. From outside, nobody knows how many desks are on Floor 12 or which one is faster today — that's the clerk's job.
+A reverse proxy is a mailroom clerk — receives requests, picks the right backend, forwards them, brings replies back. Switchyard's difference is how few times it *touches* each byte:
 
 ```
-              ┌─────────────────────────────────────────────┐
-              │              SWITCHYARD                     │
-   Clients ──▶│  TCP accept → TLS → HTTP parse → route      │──▶ Backends
-              │  → LB pick → pool → forward → response      │
-              │                                             │
-              │  ── Hot-swappable state layer ──            │
-              │  config · DNS · health · sessions · limits  │
-              └─────────────────────────────────────────────┘
-                                 ▲
-                                 │
-                         admin API + traces
+   Client                          Backend
+     │                                ▲
+     │  ─ TCP + TLS ─▶                │  ─ TCP + TLS ─
+     │                                │
+     ▼                                │
+   ┌───────────────────────────────────────────────┐
+   │                Switchyard                     │
+   │                                               │
+   │   io_uring reactor  ─── one shared SQ/CQ      │
+   │   Zero-copy parser  ─── views, not strings    │
+   │   writev / splice   ─── kernel does the merge │
+   │   kTLS              ─── crypto in the kernel  │
+   └───────────────────────────────────────────────┘
 ```
+
+Same features as any reverse proxy. Different implementation discipline underneath.
 
 ---
 
 ## The Build Ladder
 
-Each rung is understandable before starting the next. We plan each rung deeply as we approach it — not months in advance.
+Each rung is understandable before starting the next. The **rungs stay the same** as any competent proxy would need — but the **standard for each rung** is sharpened by the thesis:
 
-| Rung | Milestone | Estimate |
-|-----:|-----------|:--------:|
-| 1  | TCP echo server — accept, read, write, close | ~1 week |
-| 2  | HTTP/1.1 parser + canned response | ~1 week |
-| 3  | Single-backend forwarder (it's a proxy!) | ~1 week |
-| 4  | Multi-backend + round-robin load balancing | ~1 week |
-| 5  | Upstream connection pooling | ~1 week |
-| 6  | Health checks | ~1 week |
-| 7  | Timeouts and retries with budget | ~2 weeks |
-| 8  | TLS termination (BoringSSL/OpenSSL) | ~2 weeks |
-| 9  | HTTP/2 support | ~3-4 weeks |
-| 10 | Hot config reload — state-first thesis begins | ~3 weeks |
-| 11 | Observability — per-request traces + admin API | ~2 weeks |
-| 12 | Shared cross-instance state (replication) | ~4+ weeks |
+| Rung | Milestone | Sharpened standard |
+|-----:|-----------|--------------------|
+| 1  | TCP echo server | `io_uring`-native reactor (`kqueue` fallback for macOS dev only) |
+| 2  | HTTP/1.1 parser + canned response | Zero-copy `HeaderView` — no `std::string` for headers |
+| 3  | Single-backend forwarder | `writev` for header + body forward; `splice` where legal |
+| 4  | Multi-backend + round-robin LB | Wait-free (RCU) endpoint table |
+| 5  | Upstream connection pool | Global lockless MPMC queue, not per-worker |
+| 6  | Health checks | Same as anyone else |
+| 7  | Timeouts + retries with budget | Same as anyone else |
+| 8  | TLS termination | **kTLS from day one** (handshake in userspace, records in kernel) |
+| 9  | HTTP/2 | Zero-copy frame handling; `HEADERS`/`DATA` payloads as views |
+| 10 | Hot config reload | RCU-based atomic config swap |
+| 11 | Observability | Wait-free per-CPU counters, aggregated on read |
+| 12 | Benchmarks + comparisons | Reproducible harness in `bench/`; head-to-head vs nginx/HAProxy/Envoy |
 
 **Rungs 1-3** = a terrible-but-working reverse proxy. ~3 weeks.
-**Rungs 1-7** = something you could put in front of a hobby app. ~2-3 months.
-**Rungs 1-12** = the full state-first vision. 6-12 months of focused work.
+**Rungs 1-8** = a proxy you could put in front of real traffic. ~4-6 months.
+**Rungs 1-12** = the full thesis with defensible benchmarks. 8-12 months.
 
 ---
 
-## Why C++
+## Why C++20
 
-- Zero-cost abstractions and manual memory control matter on the hot path of a network proxy.
-- Direct access to OS primitives (epoll, `io_uring`, kqueue) with no runtime in the way.
-- Mature crypto/TLS ecosystem (OpenSSL, BoringSSL) with native bindings.
-- Forces explicit reasoning about ownership, lifetimes, and concurrency — the exact skills backend fundamentals demand.
+- Direct access to Linux primitives (`io_uring`, `splice`, `kTLS` setsockopt) without a runtime in the way.
+- Zero-cost abstractions and manual memory control matter on a zero-copy hot path.
+- C++20 coroutines make the `io_uring` submission/completion loop readable without callback hell.
+- Mature crypto ecosystem (BoringSSL, OpenSSL) with native bindings.
 
-Go and Rust are both reasonable alternatives. C++ is chosen deliberately for the learning value: the goal is to understand backend fundamentals, and C++ leaves nothing hidden.
+**Why not Rust?** Rust would be my second choice. But `io_uring` bindings in Rust (`tokio-uring`, `glommio`) are still in flux, and Cloudflare's Pingora (Rust) chose `tokio` which is `epoll`-based. C++ lets us go straight to `liburing` and skip abstraction layers.
+
+**Why not Go?** GC pauses hurt tail latency. Fine for many things, not for a proxy claiming half the p99 of the incumbents.
 
 ---
 
@@ -111,12 +115,14 @@ switchyard/
 ├── README.md                    ← you are here
 ├── LICENSE
 ├── docs/
-│   ├── ARCHITECTURE.md          ← deep plan for the current rung
+│   ├── ARCHITECTURE.md          ← deep plan for current rung
 │   ├── GLOSSARY.md              ← plain-English definitions
-│   └── decisions/               ← ADRs for non-obvious choices (added as we go)
-├── src/                         ← C++ source (added at Rung 1)
-├── tests/                       ← unit + integration tests (added at Rung 1)
-└── CMakeLists.txt               ← build system (added at Rung 1)
+│   ├── RESEARCH.md              ← comparison vs nginx/HAProxy/Envoy/Pingora
+│   └── decisions/               ← ADRs for non-obvious choices
+├── src/                         ← C++20 source (from Rung 1)
+├── tests/                       ← unit + integration tests
+├── bench/                       ← reproducible perf harness vs incumbents
+└── CMakeLists.txt
 ```
 
 ---
@@ -125,28 +131,29 @@ switchyard/
 
 | Doc | Description |
 |-----|-------------|
-| [Architecture](docs/ARCHITECTURE.md) | Deep design for the current rung (Rungs 1-3 today) |
-| [Glossary](docs/GLOSSARY.md) | Plain-English definitions of every term used in the project |
+| [Architecture](docs/ARCHITECTURE.md) | Deep design for current rung (Rungs 1-3 today) |
+| [Glossary](docs/GLOSSARY.md) | Plain-English definitions of every term used |
+| [Research](docs/RESEARCH.md) | Landscape comparison of existing proxies and Switchyard's enhancements |
 
 ---
 
 ## Roadmap
 
-- [ ] **Rung 1** — TCP echo server (accept loop, read, write, close)
-- [ ] **Rung 2** — HTTP/1.1 request parser + canned response
-- [ ] **Rung 3** — Single-backend forwarder (working reverse proxy)
-- [ ] **Rung 4** — Multi-backend round-robin load balancing
-- [ ] **Rung 5** — Upstream connection pooling
+- [ ] **Rung 1** — `io_uring`-native TCP echo (kqueue fallback for macOS)
+- [ ] **Rung 2** — Zero-copy HTTP/1.1 parser + canned response
+- [ ] **Rung 3** — Single-backend forwarder with `writev`/`splice`
+- [ ] **Rung 4** — Multi-backend round-robin with RCU endpoint table
+- [ ] **Rung 5** — Global lockless upstream connection pool
 - [ ] **Rung 6** — Active health checks
 - [ ] **Rung 7** — Timeouts, retries, retry budgets
-- [ ] **Rung 8** — TLS termination
-- [ ] **Rung 9** — HTTP/2 support
-- [ ] **Rung 10** — Hot config reload (state-first begins)
-- [ ] **Rung 11** — Structured per-request observability + admin API
-- [ ] **Rung 12** — Cross-instance shared state (replication)
+- [ ] **Rung 8** — kTLS-first TLS termination
+- [ ] **Rung 9** — HTTP/2 with zero-copy frame handling
+- [ ] **Rung 10** — RCU-based hot config reload
+- [ ] **Rung 11** — Wait-free per-CPU observability
+- [ ] **Rung 12** — Reproducible benchmarks vs nginx/HAProxy/Envoy
 
 ---
 
 <div align="center">
-<b>Built to understand what the abstractions above us hide.</b>
+<b>Built to understand what the abstractions above us hide — and to prove the incumbents leave real performance on the table.</b>
 </div>
