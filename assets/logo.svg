@@ -1,60 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
-  <defs>
-    <linearGradient id="blueGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#60A5FA"/>
-      <stop offset="100%" stop-color="#3B82F6"/>
-    </linearGradient>
-    <linearGradient id="activeRail" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#FFFFFF"/>
-      <stop offset="100%" stop-color="#60A5FA"/>
-    </linearGradient>
-    <linearGradient id="activeRailR" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#60A5FA"/>
-      <stop offset="100%" stop-color="#FFFFFF"/>
-    </linearGradient>
-    <radialGradient id="hubGlow" cx="50%" cy="50%" r="50%">
-      <stop offset="0%"   stop-color="#60A5FA" stop-opacity="0.55"/>
-      <stop offset="60%"  stop-color="#3B82F6" stop-opacity="0.15"/>
-      <stop offset="100%" stop-color="#3B82F6" stop-opacity="0"/>
-    </radialGradient>
-    <filter id="soft" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur stdDeviation="1.2"/>
-    </filter>
-  </defs>
+  <!-- Background: clean white with a hair-thin border -->
+  <rect x="0.5" y="0.5" width="199" height="199" rx="24" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1"/>
 
-  <!-- Background -->
-  <rect width="200" height="200" fill="#0B1220" rx="28"/>
+  <!-- Routing mark: 3 lines converge to a central pivot, then 3 lines diverge.
+       Single blue, thin monoline, no gradients, no glow. -->
+  <g stroke="#2563EB" stroke-width="2.5" stroke-linecap="round" fill="none">
+    <line x1="40" y1="70"  x2="100" y2="100"/>
+    <line x1="40" y1="100" x2="100" y2="100"/>
+    <line x1="40" y1="130" x2="100" y2="100"/>
+    <line x1="100" y1="100" x2="160" y2="70"/>
+    <line x1="100" y1="100" x2="160" y2="100"/>
+    <line x1="100" y1="100" x2="160" y2="130"/>
+  </g>
 
-  <!-- Ambient hub glow -->
-  <circle cx="100" cy="100" r="60" fill="url(#hubGlow)"/>
-
-  <!-- Left incoming rails (dim) -->
-  <line x1="24" y1="56"  x2="80" y2="100" stroke="#334155" stroke-width="4" stroke-linecap="round"/>
-  <line x1="24" y1="144" x2="80" y2="100" stroke="#334155" stroke-width="4" stroke-linecap="round"/>
-  <!-- Left active rail -->
-  <line x1="24" y1="100" x2="80" y2="100" stroke="url(#activeRail)" stroke-width="5" stroke-linecap="round"/>
-
-  <!-- Left endpoint dots (clients) -->
-  <circle cx="24" cy="56"  r="3.5" fill="#475569"/>
-  <circle cx="24" cy="100" r="4.5" fill="#FFFFFF"/>
-  <circle cx="24" cy="144" r="3.5" fill="#475569"/>
-
-  <!-- Central switch — outer diamond rim -->
-  <rect x="80" y="80" width="40" height="40" rx="5"
-        transform="rotate(45 100 100)"
-        fill="#0B1220" stroke="url(#blueGrad)" stroke-width="2.5"/>
-  <!-- Inner core -->
-  <circle cx="100" cy="100" r="6" fill="#FFFFFF"/>
-  <circle cx="100" cy="100" r="10" fill="none" stroke="#FFFFFF" stroke-width="1" stroke-opacity="0.35"/>
-
-  <!-- Right outgoing rails (dim) -->
-  <line x1="120" y1="100" x2="176" y2="56"  stroke="#334155" stroke-width="4" stroke-linecap="round"/>
-  <line x1="120" y1="100" x2="176" y2="144" stroke="#334155" stroke-width="4" stroke-linecap="round"/>
-  <!-- Right active rail -->
-  <line x1="120" y1="100" x2="176" y2="100" stroke="url(#activeRailR)" stroke-width="5" stroke-linecap="round"/>
-
-  <!-- Right endpoint dots (backends) -->
-  <circle cx="176" cy="56"  r="3.5" fill="#475569"/>
-  <circle cx="176" cy="100" r="4.5" fill="#FFFFFF"/>
-  <circle cx="176" cy="144" r="3.5" fill="#475569"/>
+  <!-- Central pivot -->
+  <circle cx="100" cy="100" r="4" fill="#2563EB"/>
 </svg>
