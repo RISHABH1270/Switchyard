@@ -19,17 +19,21 @@
 
 ## The Problem
 
-**Reverse proxies have hit a CPU ceiling.**
+**Your reverse proxy is burning half its CPU on `memcpy` and syscalls.**
 
-nginx, HAProxy, and Envoy all share a lineage of design decisions made when 1 Gbps was fast and TLS was expensive to offload. On modern hardware — 100 Gbps NICs, servers with 64+ cores, HTTP/2 and mTLS everywhere — that lineage now bleeds CPU in three specific places:
+Not routing. Not TLS. Not health checks. Not filter logic. Just shuffling bytes between the kernel and userspace, over and over, using patterns nginx locked in when 1 Gbps was fast — in 2004.
+
+On today's hardware (100 Gbps NICs, 64+ cores, HTTPS everywhere), that waste is real money: **fleets twice as big as they should be, tail latency you can't cut, and a compute bill you don't need to be paying.** The Linux kernel added `io_uring` in 2019, kTLS in 2017, `SEND_ZC` in 2022. **No mainline L7 proxy has re-architected around any of them.**
+
+Three specific places CPU leaks:
 
 | Where CPU leaks | Why |
 |---|---|
-| **Syscall overhead** | All three still use `epoll`. Every request costs 4-6 syscalls. `io_uring` (Linux 5.1+) can amortize this to nearly one. |
+| **Syscall overhead** | nginx, HAProxy, and Envoy all still use `epoll`. Every request costs 4-6 syscalls. `io_uring` can amortize this to nearly one. |
 | **Userspace memory copies** | Each request byte gets memcpy'd 3-4 times: kernel → recv buffer → parsed struct → send buffer → kernel. On a busy proxy that's 30-50% of total CPU. |
-| **Userspace TLS record framing** | Encryption bytes bounce between userspace crypto libraries and kernel sockets. Kernel TLS (kTLS) can eliminate that bounce and go direct to the NIC. |
+| **Userspace TLS record framing** | Encryption bytes bounce between userspace crypto libraries and kernel sockets. kTLS eliminates that bounce and goes direct to the NIC. |
 
-The result: a modern box that could push 100 Gbps of proxied traffic on paper delivers 30-50 Gbps in practice. The CPU is busy moving bytes, not serving requests. At scale this becomes fleet size × 2, latency × 2, cost × 2.
+A modern box that could push 100 Gbps of proxied traffic on paper delivers 30-50 Gbps in practice. The CPU is busy moving bytes, not serving requests. At scale that's **fleet size × 2, tail latency × 2, cost × 2** — and nobody has fixed it.
 
 ---
 
