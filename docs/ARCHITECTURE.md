@@ -11,7 +11,7 @@
 These shape every design decision below. They come directly from the low-level performance thesis: `io_uring`-native, zero-copy, kTLS-first.
 
 1. **Zero-copy discipline from Rung 1.** Every design choice must ask "does this force a memory copy on the hot path?" If yes, redesign until no. Copies are the single largest CPU sink in a modern proxy.
-2. **`io_uring`-first on Linux.** No epoll fallback on Linux. `kqueue` used only for macOS developer convenience. Production is Linux-only for the performance claims to hold.
+2. **`io_uring`-native, Linux-only.** No epoll fallback, no `kqueue` fallback, no portable-reactor abstraction. Switchyard runs on Linux. macOS developers use Docker or Colima to get a Linux dev environment. An abstraction layer for cross-platform I/O pays for nothing when the entire thesis (`io_uring`, kTLS, `SEND_ZC`, `splice`) is Linux-specific.
 3. **State lives per-CPU or in RCU snapshots.** No mutexes on the hot path, ever. Every shared read is either a per-CPU load or a lock-free pointer load. Writes take slower paths (RCU grace period, per-CPU aggregation).
 4. **The hot path must be observable.** Every request eventually emits a structured trace with phase boundaries (accept → parse → route → forward → response). We start noting these boundaries from Rung 1, even if we only `printf` today.
 5. **Fail loudly in development, gracefully in production.** Assertion-heavy debug builds. Explicit error propagation on the hot path via `std::expected<T, ProxyErr>`; no exceptions.
@@ -21,8 +21,7 @@ These shape every design decision below. They come directly from the low-level p
 
 ## Target Environment
 
-- **Production OS:** Linux 6.1+ (`io_uring` maturity, kTLS reliability, `SEND_ZC` support).
-- **Development OS:** macOS acceptable via `kqueue` fallback; benchmark claims apply only to Linux.
+- **OS:** Linux 6.1+ only (`io_uring` maturity, kTLS reliability, `SEND_ZC` support). No cross-platform build. macOS developers work through Docker/Colima or a Linux VM — dev-loop is `docker run --rm -it -v $PWD:/work -w /work switchyard-dev bash`.
 - **Compiler:** GCC 13+ or Clang 16+ with C++20 (coroutines required).
 - **Build:** CMake 3.20+.
 - **Test framework:** GoogleTest (unit) + Python integration harness (spawn proxy, curl, assert).
@@ -41,9 +40,9 @@ Accept TCP connections on a configurable port. Read bytes from the client. Write
 
 ### Design
 
-**I/O model:** single-threaded event loop using `io_uring` on Linux, `kqueue` on macOS. Abstracted behind a small `Reactor` class with two implementations.
+**I/O model:** single-threaded event loop using `io_uring`. Wrapped in a small `Reactor` class so unit tests can substitute a `MockReactor` — no other production implementation.
 
-**Why `io_uring` first (not epoll)?** The thesis rests on it. Every rung after this depends on submission-queue-batching, multishot ops, and `SEND_ZC`. Starting with epoll would mean rewriting the reactor at Rung 5 or 8. Doing it right now costs one extra week and saves months later.
+**Why `io_uring` (not epoll)?** The thesis rests on it. Every rung after this depends on submission-queue-batching, multishot ops, and `SEND_ZC`. Starting with epoll would mean rewriting the reactor at Rung 5 or 8. Doing it right now costs one extra week and saves months later.
 
 **Why not threads-per-connection?** Falls over at 10k connections. Not the goal.
 
@@ -81,7 +80,7 @@ public:
 };
 ```
 
-Both `IoUringReactor` and `KqueueReactor` implement this. Production code holds a `Reactor&`, not a concrete type.
+`IoUringReactor` is the only production implementation. `MockReactor` (in `tests/`) satisfies the same interface for unit tests.
 
 **Coroutines** are how we get sequential-looking code without callback hell:
 
@@ -103,9 +102,8 @@ task<void> echo_loop(Reactor& r, int fd) {
 src/
 ├── main.cpp              ← argv parsing, starts the Reactor
 ├── reactor/
-│   ├── reactor.h         ← abstract interface + awaitables
-│   ├── io_uring.cpp      ← Linux implementation
-│   └── kqueue.cpp        ← macOS implementation
+│   ├── reactor.h         ← interface + awaitables
+│   └── io_uring.cpp      ← only production implementation
 ├── net/
 │   ├── connection.h/cpp  ← per-connection state (fd, buffers, phase)
 │   └── listener.h/cpp    ← accept loop wrapper

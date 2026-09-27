@@ -78,7 +78,7 @@ Each rung is understandable before starting the next. The **rungs stay the same*
 
 | Rung | Milestone | Sharpened standard |
 |-----:|-----------|--------------------|
-| 1  | TCP echo server | `io_uring`-native reactor (`kqueue` fallback for macOS dev only) |
+| 1  | TCP echo server | `io_uring`-native reactor |
 | 2  | HTTP/1.1 parser + canned response | Zero-copy `HeaderView` — no `std::string` for headers |
 | 3  | Single-backend forwarder | `writev` for header + body forward; `splice` where legal |
 | 4  | Multi-backend + round-robin LB | Wait-free (RCU) endpoint table |
@@ -141,7 +141,7 @@ switchyard/
 
 ## Roadmap
 
-- [ ] **Rung 1** — `io_uring`-native TCP echo (kqueue fallback for macOS)
+- [ ] **Rung 1** — `io_uring`-native TCP echo
 - [ ] **Rung 2** — Zero-copy HTTP/1.1 parser + canned response
 - [ ] **Rung 3** — Single-backend forwarder with `writev`/`splice`
 - [ ] **Rung 4** — Multi-backend round-robin with RCU endpoint table

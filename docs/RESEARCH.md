@@ -171,7 +171,7 @@ Switchyard's thesis is not novel research — every technique below is already i
 **Risks:**
 - Requires Linux 6.1+ for stable feature set.
 - API surface still expanding — will need to track kernel changes.
-- macOS dev builds must fall back to `kqueue`; production perf claims apply only to Linux.
+- Linux-only by design. macOS developers work through Docker/Colima or a Linux VM. No cross-platform reactor abstraction — the thesis primitives are Linux-only, so paying for portability buys nothing.
 
 ### 4.2 Zero-copy request/response path
 
@@ -293,7 +293,7 @@ To keep the pitch honest, we should state clearly what Switchyard is *not* tryin
 - **Not a WAF.** No web application firewall features in v1.
 - **Not a CDN.** No caching, no edge features. That's Varnish / Cloudflare / Fastly.
 - **Not a Kubernetes ingress in v1.** May become one later; v1 is a general-purpose L7 proxy.
-- **Not cross-platform for production.** Linux 6.1+ only. macOS is dev-only.
+- **Not cross-platform.** Linux 6.1+ only. macOS developers use Docker/Colima; there is no `kqueue` fallback.
 - **Not a drop-in replacement for nginx configs.** Config format is our own; migration path is a nice-to-have, not a v1 feature.
 
 Every "not" is a decision to spend effort on the thesis instead of feature-checkbox parity.

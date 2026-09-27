@@ -130,7 +130,7 @@ A single thread watching many sockets at once. When a socket has data (or capaci
 Linux's classical event-loop primitive. `epoll_ctl` to register sockets, `epoll_wait` to block until something happens. Used by nginx, HAProxy, Envoy, and Cloudflare's Pingora.
 
 **kqueue**
-BSD/macOS equivalent of epoll. Same idea, different API.
+BSD/macOS equivalent of epoll. Same idea, different API. **Not used by Switchyard** — included here for context when discussing other proxies. Switchyard is Linux-only; macOS developers use Docker/Colima.
 
 **`io_uring`**
 Newer Linux syscall interface (since 5.1, matured in 5.11+, more so in 6.x). A pair of ring buffers (Submission Queue, Completion Queue) shared between userspace and the kernel. Userspace pushes I/O ops; kernel returns completions. Advantages over epoll:
@@ -148,9 +148,6 @@ The two ring buffers at the heart of `io_uring`. SQE = Submission Queue Entry (o
 
 **Multishot operations**
 `io_uring` feature where one submitted op (e.g. `multishot_accept`) keeps producing completions until you explicitly cancel it. Fewer syscalls per event.
-
-**`kqueue`**
-See above (macOS equivalent of epoll). Used as dev-only fallback.
 
 **Reactor**
 The pattern where an event loop dispatches ready-socket events to handlers. "When socket X is readable, call handler Y." Rung 1's core class.
