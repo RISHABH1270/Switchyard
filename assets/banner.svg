@@ -135,7 +135,7 @@
     <text x="208" y="128"
           font-family="'Inter', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif"
           font-size="13.5" font-weight="500" fill="#64748B" letter-spacing="0.4">
-      HTTP reverse proxy · io_uring · kTLS · C++20
+      HTTP/HTTPS reverse proxy · io_uring · kTLS · C++20
     </text>
 
     <!-- ─────────────── RIGHT SIDE BADGES ─────────────── -->
