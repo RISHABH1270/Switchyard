@@ -4,11 +4,35 @@
       <rect width="860" height="200" rx="12"/>
     </clipPath>
 
-    <!-- Very subtle warm background wash (barely visible peach hint in top-left) -->
-    <radialGradient id="bgWash" cx="10%" cy="20%" r="70%">
-      <stop offset="0%"   stop-color="#FFF7ED" stop-opacity="1"/>
-      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="1"/>
+    <!-- Base gradient: warm cream, diagonal flow -->
+    <linearGradient id="baseGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"   stop-color="#FFFDF9"/>
+      <stop offset="55%"  stop-color="#FFF7ED"/>
+      <stop offset="100%" stop-color="#FFEDD5"/>
+    </linearGradient>
+
+    <!-- Soft peach glow orb — top-left -->
+    <radialGradient id="glowTL" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"   stop-color="#FED7AA" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#FED7AA" stop-opacity="0"/>
     </radialGradient>
+
+    <!-- Soft coral glow orb — right side -->
+    <radialGradient id="glowR" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"   stop-color="#FDBA74" stop-opacity="0.45"/>
+      <stop offset="100%" stop-color="#FDBA74" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Warm accent glow — bottom-center -->
+    <radialGradient id="glowB" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"   stop-color="#F97316" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#F97316" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Subtle dot grid for texture (very low opacity) -->
+    <pattern id="dots" x="0" y="0" width="18" height="18" patternUnits="userSpaceOnUse">
+      <circle cx="9" cy="9" r="1" fill="#F97316" opacity="0.10"/>
+    </pattern>
 
     <!-- Gradient accent bar at top (light coral → deep orange) -->
     <linearGradient id="accentBar" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -29,10 +53,16 @@
       <stop offset="100%" stop-color="#C2410C"/>
     </linearGradient>
 
-    <!-- Wordmark subtle gradient (near-black with warm hint) -->
+    <!-- Wordmark gradient (near-black with subtle depth) -->
     <linearGradient id="wordmarkGrad" x1="0%" y1="0%" x2="0%" y2="100%">
       <stop offset="0%"   stop-color="#0F172A"/>
       <stop offset="100%" stop-color="#1E293B"/>
+    </linearGradient>
+
+    <!-- Primary badge gradient -->
+    <linearGradient id="badgeFill" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"   stop-color="#FFF7ED"/>
+      <stop offset="100%" stop-color="#FED7AA"/>
     </linearGradient>
 
     <!-- Chevron soft shadow -->
@@ -45,11 +75,31 @@
         <feMergeNode in="SourceGraphic"/>
       </feMerge>
     </filter>
+
+    <!-- Soft shadow for the logo tile -->
+    <filter id="tileShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="4"/>
+      <feOffset dx="0" dy="3"/>
+      <feComponentTransfer><feFuncA type="linear" slope="0.15"/></feComponentTransfer>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
   </defs>
 
   <g clip-path="url(#rounded)">
-    <!-- Background with very subtle warm wash -->
-    <rect width="860" height="200" fill="url(#bgWash)"/>
+    <!-- ─────────────── LAYERED BACKGROUND ─────────────── -->
+    <!-- Base warm gradient -->
+    <rect width="860" height="200" fill="url(#baseGrad)"/>
+
+    <!-- Dot texture overlay -->
+    <rect width="860" height="200" fill="url(#dots)"/>
+
+    <!-- Glow orbs for depth -->
+    <ellipse cx="120" cy="40"  rx="260" ry="140" fill="url(#glowTL)"/>
+    <ellipse cx="720" cy="120" rx="260" ry="150" fill="url(#glowR)"/>
+    <ellipse cx="430" cy="220" rx="380" ry="120" fill="url(#glowB)"/>
 
     <!-- Hair-thin border -->
     <rect x="0.5" y="0.5" width="859" height="199" rx="12" fill="none" stroke="#E5E7EB" stroke-width="1"/>
@@ -57,9 +107,10 @@
     <!-- Gradient accent bar at very top -->
     <rect x="0" y="0" width="860" height="3" fill="url(#accentBar)"/>
 
-    <!-- ── Logo mark on the left ────────────────────────────────────── -->
-    <!-- Coral tile behind the chevron -->
-    <rect x="42" y="46" width="108" height="108" rx="18" fill="url(#tileGrad)"/>
+    <!-- ─────────────── LOGO MARK ─────────────── -->
+    <g filter="url(#tileShadow)">
+      <rect x="42" y="46" width="108" height="108" rx="18" fill="url(#tileGrad)"/>
+    </g>
     <!-- Ghosted back chevron -->
     <path d="M 66 78 L 96 100 L 66 122"
           stroke="#FDBA74" stroke-width="8"
@@ -71,39 +122,31 @@
           stroke-linecap="round" stroke-linejoin="round"
           fill="none" filter="url(#chevShadow)"/>
 
-    <!-- Vertical divider between logo and wordmark -->
+    <!-- Vertical divider -->
     <line x1="180" y1="60" x2="180" y2="140" stroke="#E5E7EB" stroke-width="1"/>
 
-    <!-- ── Wordmark ─────────────────────────────────────────────────── -->
+    <!-- ─────────────── WORDMARK ─────────────── -->
     <text x="206" y="98"
           font-family="'Inter', 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif"
           font-size="48" font-weight="700" fill="url(#wordmarkGrad)" letter-spacing="-1.2">
       Switchyard
     </text>
 
-    <!-- Tagline -->
     <text x="208" y="128"
           font-family="'Inter', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif"
           font-size="13.5" font-weight="500" fill="#64748B" letter-spacing="0.4">
       HTTP reverse proxy · io_uring · kTLS · C++20
     </text>
 
-    <!-- ── Right side badges — with a bit more depth ────────────────── -->
-    <!-- Row 1: v0.1.0 -->
-    <rect x="672" y="72" width="72" height="28" rx="6" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1"/>
+    <!-- ─────────────── RIGHT SIDE BADGES ─────────────── -->
+    <rect x="672" y="72" width="72" height="28" rx="6" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1"/>
     <text x="708" y="86" font-family="'JetBrains Mono', 'SF Mono', 'Fira Code', monospace"
           font-size="11" fill="#475569" text-anchor="middle" dominant-baseline="central">v0.1.0</text>
 
-    <!-- Row 1: MIT -->
-    <rect x="752" y="72" width="60" height="28" rx="6" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1"/>
+    <rect x="752" y="72" width="60" height="28" rx="6" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1"/>
     <text x="782" y="86" font-family="'JetBrains Mono', 'SF Mono', 'Fira Code', monospace"
           font-size="11" fill="#475569" text-anchor="middle" dominant-baseline="central">MIT</text>
 
-    <!-- Row 2: C++20 · Linux — warm gradient fill, more depth -->
-    <linearGradient id="badgeFill" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%"   stop-color="#FFF7ED"/>
-      <stop offset="100%" stop-color="#FED7AA"/>
-    </linearGradient>
     <rect x="672" y="108" width="140" height="28" rx="6" fill="url(#badgeFill)" stroke="#FDBA74" stroke-width="1"/>
     <text x="742" y="122" font-family="'JetBrains Mono', 'SF Mono', 'Fira Code', monospace"
           font-size="11" font-weight="600" fill="#C2410C" text-anchor="middle" dominant-baseline="central">C++20 · Linux</text>
