@@ -5,11 +5,12 @@
 <br/>
 <br/>
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-10B981?style=for-the-badge&labelColor=065F46)](LICENSE)
-[![C++20](https://img.shields.io/badge/C%2B%2B-20-00599C?style=for-the-badge&logo=cplusplus&logoColor=white&labelColor=004482)](https://en.cppreference.com/w/cpp/20)
-[![Status](https://img.shields.io/badge/Status-Rung%200%20Planning-F97316?style=for-the-badge&labelColor=9A3412)](docs/ARCHITECTURE.md)
-[![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS-8B5CF6?style=for-the-badge&logo=linux&logoColor=white&labelColor=5B21B6)](#)
-[![io_uring](https://img.shields.io/badge/io__uring-native-06B6D4?style=for-the-badge&labelColor=155E75)](docs/RESEARCH.md)
+[![License: MIT](https://img.shields.io/badge/License-MIT-34D399?style=for-the-badge&labelColor=10B981)](LICENSE)
+[![C++20](https://img.shields.io/badge/C%2B%2B-20-60A5FA?style=for-the-badge&logo=cplusplus&logoColor=white&labelColor=3B82F6)](https://en.cppreference.com/w/cpp/20)
+[![Status](https://img.shields.io/badge/Status-Rung%200%20Planning-FB923C?style=for-the-badge&labelColor=F97316)](docs/ARCHITECTURE.md)
+[![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS-A78BFA?style=for-the-badge&logo=linux&logoColor=white&labelColor=8B5CF6)](#)
+[![io_uring](https://img.shields.io/badge/io__uring-native-22D3EE?style=for-the-badge&labelColor=06B6D4)](docs/RESEARCH.md)
+[![kTLS](https://img.shields.io/badge/kTLS-first-F472B6?style=for-the-badge&labelColor=EC4899)](docs/RESEARCH.md)
 
 </div>
 
