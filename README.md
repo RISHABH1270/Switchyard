@@ -8,7 +8,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-10B981?style=for-the-badge)](LICENSE)
 [![C++20](https://img.shields.io/badge/C%2B%2B-20-3B82F6?style=for-the-badge&logo=cplusplus&logoColor=white)](https://en.cppreference.com/w/cpp/20)
 [![Status](https://img.shields.io/badge/Status-Rung%200%20Planning-F59E0B?style=for-the-badge)](docs/ARCHITECTURE.md)
-[![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS-3B82F6?style=for-the-badge&logo=linux&logoColor=white)](#)
+[![Platform](https://img.shields.io/badge/Platform-Linux-3B82F6?style=for-the-badge&logo=linux&logoColor=white)](#)
 [![io_uring](https://img.shields.io/badge/io__uring-native-EF4444?style=for-the-badge)](docs/RESEARCH.md)
 [![kTLS](https://img.shields.io/badge/kTLS-first-10B981?style=for-the-badge)](docs/RESEARCH.md)
 
