@@ -1,18 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
-  <!-- Background: clean white with a hair-thin border -->
-  <rect x="0.5" y="0.5" width="199" height="199" rx="24" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1"/>
+  <!-- Background: clean white, hair-thin border -->
+  <rect x="0.5" y="0.5" width="199" height="199" rx="24" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1"/>
 
-  <!-- Routing mark: 3 lines converge to a central pivot, then 3 lines diverge.
-       Single blue, thin monoline, no gradients, no glow. -->
-  <g stroke="#2563EB" stroke-width="2.5" stroke-linecap="round" fill="none">
-    <line x1="40" y1="70"  x2="100" y2="100"/>
-    <line x1="40" y1="100" x2="100" y2="100"/>
-    <line x1="40" y1="130" x2="100" y2="100"/>
-    <line x1="100" y1="100" x2="160" y2="70"/>
-    <line x1="100" y1="100" x2="160" y2="100"/>
-    <line x1="100" y1="100" x2="160" y2="130"/>
+  <!-- Three chevrons pointing right — suggests forward flow through the proxy.
+       Warm Kite-style orange, single color, no gradients. -->
+  <g stroke="#EB5B00" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 55 65 L 95 100 L 55 135"/>
+    <path d="M 90 65 L 130 100 L 90 135"/>
+    <path d="M 125 65 L 165 100 L 125 135"/>
   </g>
-
-  <!-- Central pivot -->
-  <circle cx="100" cy="100" r="4" fill="#2563EB"/>
 </svg>
