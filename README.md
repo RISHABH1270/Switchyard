@@ -10,7 +10,6 @@
 [![Status](https://img.shields.io/badge/Status-Rung%200%20Planning-F97316?style=for-the-badge&labelColor=9A3412)](docs/ARCHITECTURE.md)
 [![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS-8B5CF6?style=for-the-badge&logo=linux&logoColor=white&labelColor=5B21B6)](#)
 [![io_uring](https://img.shields.io/badge/io__uring-native-06B6D4?style=for-the-badge&labelColor=155E75)](docs/RESEARCH.md)
-[![kTLS](https://img.shields.io/badge/kTLS-first-EC4899?style=for-the-badge&labelColor=9F1239)](docs/RESEARCH.md)
 
 </div>
 
