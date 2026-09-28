@@ -1,343 +1,394 @@
 # Glossary
 
-Plain-English definitions of every term used in this project. When something is fuzzy, look here first. Add entries as new terms come up — this file grows with the ladder.
+Formal definitions for every term used in this project. Where a term has a canonical textbook definition, that is used first; project-specific context (Switchyard's design choices, which rung the term lands on) follows underneath.
+
+---
+
+## Operating system fundamentals
+
+**Kernel**
+A kernel is the core part of an operating system. It acts as a bridge between software applications and the hardware of a computer.
+
+The kernel manages system resources — such as the CPU, memory, and devices — ensuring everything works together smoothly and efficiently. All privileged operations (talking to the NIC, allocating memory, scheduling threads) happen inside the kernel.
+
+**User space (Userspace)**
+User space is the memory area where all user-mode applications work. It is separated from kernel space to prevent applications from directly accessing critical system resources.
+
+Programs like nginx, your web browser, and Switchyard itself all run in user space with limited privileges. To perform privileged operations they must ask the kernel via system calls.
+
+**System call (syscall)**
+A system call is the programmatic way in which a program requests a service from the operating system's kernel. It provides an interface between a running program and the kernel.
+
+Examples include `read()`, `write()`, `open()`, `close()`, `epoll_wait()`, and `io_uring_enter()`. Each system call is a boundary crossing between user space and kernel space, which costs CPU cycles. Reducing syscall count per request is one of Switchyard's central optimisation goals (see Rung 1).
 
 ---
 
 ## Networking basics
 
 **TCP (Transmission Control Protocol)**
-Reliable, ordered stream of bytes between two computers. If a packet is lost, TCP retransmits. If packets arrive out of order, TCP reassembles. Every HTTP request rides on top of TCP.
+TCP is one of the main protocols of the Internet protocol suite. It provides reliable, ordered, and error-checked delivery of a stream of bytes between two computers communicating over a network.
+
+If a packet is lost in transit, TCP retransmits it. If packets arrive out of order, TCP reassembles them. HTTP, FTP, SMTP, and most application-layer protocols run on top of TCP.
 
 **UDP (User Datagram Protocol)**
-Same layer as TCP but unreliable and unordered — fire-and-forget packets. Used by DNS, video streaming, and QUIC (which HTTP/3 rides on).
+UDP is a connectionless communication protocol that provides a simple, unreliable message service. Unlike TCP, UDP does not guarantee delivery, ordering, or duplicate protection.
+
+UDP is faster than TCP because it has no handshake or acknowledgement overhead. Used by DNS, live video streaming, VoIP, and QUIC (which HTTP/3 rides on).
 
 **Socket**
-The programming interface for talking to the network. In POSIX it's just a file descriptor (an integer). `read(fd, buf, len)` reads bytes from the network; `write(fd, buf, len)` sends them.
+A socket is an endpoint for sending or receiving data across a computer network. It provides the programming interface between an application and the transport-layer protocol (TCP or UDP).
+
+In POSIX systems, a socket is represented as a file descriptor, and standard operations like `read()`, `write()`, and `close()` work on it the same way they work on files.
 
 **Port**
-A number (0–65535) that identifies which program on a machine should receive the connection. Web servers usually listen on 80 (HTTP) or 443 (HTTPS).
+A port is a 16-bit unsigned number (0–65535) that identifies a specific process or service on a networked device. It allows multiple applications on the same host to communicate over the network simultaneously.
+
+Ports combine with an IP address to form a socket address. Well-known ports include 80 (HTTP), 443 (HTTPS), 22 (SSH), and 25 (SMTP).
 
 **File descriptor (fd)**
-An integer the kernel hands you when you open something (file, socket, pipe). Every open connection = one fd. Servers can run out of fds (`ulimit -n`), a common production bug.
+A file descriptor is a non-negative integer that the kernel uses to identify an open file, socket, pipe, or other I/O resource for a process.
+
+Every open connection consumes one file descriptor. When a process exceeds its file-descriptor limit (`ulimit -n`), new I/O operations fail — a common cause of production outages in networked applications.
 
 **Connection**
-An established TCP session between two endpoints. Lifecycle: open → send/receive → close. Both sides must close; if one crashes, the other eventually notices.
+A connection is an established communication session between two endpoints over a network, most commonly TCP. It has a lifecycle: open (handshake) → send / receive data → close (teardown).
+
+Both endpoints must close their side. If one side crashes without closing, the other eventually detects it via a keep-alive probe or timeout.
 
 **NIC (Network Interface Card)**
-The hardware that connects a server to the network. Modern NICs do 10/25/100 Gbps and support hardware offloads (TSO, GRO, TLS, checksum).
+A NIC is a hardware component that connects a computer to a network. It handles the physical and data-link layers of network communication.
+
+Modern server NICs run at 10, 25, 100, or 200 Gbps and include hardware offloads for tasks such as TCP segmentation (TSO), receive coalescing (GRO), TLS record encryption, and checksum computation.
 
 **DMA (Direct Memory Access)**
-Mechanism by which the NIC (or any device) reads/writes RAM directly, without going through the CPU. Modern network I/O relies on DMA for zero-copy paths.
+DMA is a hardware feature that allows I/O devices such as a NIC or disk controller to read from or write to system memory (RAM) directly, without involving the CPU.
+
+DMA is what makes zero-copy I/O possible: bytes can move from disk → memory → NIC without the CPU touching them.
 
 ---
 
 ## HTTP terms
 
 **HTTP (Hypertext Transfer Protocol)**
-The request/response protocol browsers and APIs speak. Versions: HTTP/1.0, 1.1, 2, 3.
+HTTP is an application-layer protocol used to transmit hypermedia documents, such as HTML, between a client and a server. It follows a request/response model over a reliable transport (TCP for HTTP/1.x and HTTP/2, QUIC for HTTP/3).
+
+Versions: HTTP/1.0, HTTP/1.1 (most widely deployed), HTTP/2 (binary, multiplexed), HTTP/3 (runs on QUIC over UDP).
+
+**HTTPS (HTTP Secure)**
+HTTPS is HTTP transported inside a TLS-encrypted tunnel. It uses the same HTTP semantics as plain HTTP but adds confidentiality (encryption), integrity, and server authentication via TLS.
 
 **HTTP/1.1**
-Text-based. One request per connection at a time. Simple to parse. What we implement in Rung 2.
+Text-based version of HTTP. One request per connection at a time (pipelining is broken in practice). Simple to parse. What we implement in Rung 2.
 
 **HTTP/2**
-Binary, framed, multiplexed. Many requests share one TCP connection concurrently via streams. Lands at Rung 9.
+Binary, framed, and multiplexed version of HTTP. Many requests share one TCP connection concurrently via streams. Lands at Rung 9.
 
 **HTTP/3**
-HTTP/2 semantics riding on QUIC (over UDP) instead of TCP. Solves head-of-line blocking at the transport layer. Out of scope for v1.
+HTTP/2 semantics running on QUIC (over UDP) instead of TCP. Solves head-of-line blocking at the transport layer. Out of scope for v1.
 
 **Request line**
-The first line of an HTTP/1.1 request: `GET /login HTTP/1.1`. Method + path + version.
+The first line of an HTTP/1.1 request: `GET /login HTTP/1.1`. Method + path + protocol version.
 
-**Headers**
-Key-value metadata after the request line. Name is case-insensitive.
+**Header**
+Case-insensitive key-value metadata that appears between the request/response line and the body. Examples: `Host`, `Content-Length`, `User-Agent`.
 
 **Body**
-Optional bytes after the headers. Length given by `Content-Length` or streamed via `Transfer-Encoding: chunked`.
+Optional payload bytes that follow the headers. Length is signalled by `Content-Length` or streamed via `Transfer-Encoding: chunked`.
 
 **Status code**
-3-digit response code: 200 OK, 404 Not Found, 502 Bad Gateway. 1xx info, 2xx success, 3xx redirect, 4xx client error, 5xx server error.
+A 3-digit integer returned in an HTTP response indicating the result of the request. Categories: 1xx (informational), 2xx (success), 3xx (redirection), 4xx (client error), 5xx (server error).
 
 **Frame (HTTP/2)**
-A binary chunk that makes up an HTTP/2 stream. 9-byte header (length, type, flags, stream_id) + payload. Types: HEADERS, DATA, SETTINGS, PING, WINDOW_UPDATE, GOAWAY.
+The unit of communication in HTTP/2. Each frame has a 9-byte header (length, type, flags, stream identifier) followed by a payload. Types include `HEADERS`, `DATA`, `SETTINGS`, `PING`, `WINDOW_UPDATE`, and `GOAWAY`.
 
 **Stream (HTTP/2)**
-A logical bidirectional message flow within a single TCP connection. One connection can carry hundreds of concurrent streams.
+A logical bidirectional message flow within a single TCP connection. One HTTP/2 connection can carry hundreds of concurrent streams.
 
 **GOAWAY**
-An HTTP/2 control frame that tells the peer "no new streams on this connection." Used for graceful shutdown / connection migration.
+An HTTP/2 control frame sent by a peer to indicate it will not accept new streams on the connection. Used for graceful shutdown and connection migration.
 
 ---
 
 ## Proxy concepts
 
 **Proxy**
-A server that sits between a client and another server, forwarding requests and responses.
+A server that sits between a client and another server, forwarding requests in one direction and responses in the other.
 
 **Forward proxy**
-Sits in front of clients (corporate VPN, ad blockers). Server on the other end doesn't know clients are behind a proxy.
+A proxy that sits in front of clients — for example, a corporate VPN or content filter. The remote server is unaware that clients are behind a proxy.
 
 **Reverse proxy**
-Sits in front of servers. Clients think they're talking directly to a server; really they're talking to the proxy, which routes to backends. What Switchyard is.
+A proxy that sits in front of one or more origin servers. Clients believe they are talking directly to the origin; in reality they are talking to the proxy, which routes each request to an appropriate backend. Switchyard is a reverse proxy.
 
 **Backend / upstream**
-The real server the reverse proxy forwards requests to. Synonyms in this context.
+The origin server to which a reverse proxy forwards requests. The two terms are used interchangeably in this project.
 
 **Route / routing**
-The decision about which backend a request goes to, usually based on URL path or `Host` header.
+The decision, made by the proxy, of which backend a given request should be sent to. Typically based on URL path, `Host` header, or method.
 
 **Load balancing**
-The algorithm that picks which backend from a pool. Round-robin, least-connections, adaptive (P2C + PEWMA, latency-aware).
+The algorithm the proxy uses to select a backend from a pool of equivalent ones. Common strategies: round-robin, least-connections, latency-aware (e.g. Power-of-Two-Choices with PEWMA).
 
 **Health check**
-Background probe (`GET /healthz` every 5s) against each backend. Backends failing checks get skipped.
+A periodic probe (for example, `GET /healthz` every 5 seconds) sent by the proxy to each backend. Backends failing checks are removed from the load-balancing pool until they recover.
 
 **Connection pooling**
-Keep a pool of already-open TCP connections to backends and reuse them. Saves TCP + TLS handshake latency.
+Reusing already-established TCP (and optionally TLS) connections to backends instead of opening a new one per request. Saves the handshake round-trips on every subsequent request.
 
 **TLS termination**
-Handling TLS at the proxy. Browser talks HTTPS to the proxy; the proxy talks plain HTTP to backends inside the private network.
+Handling TLS at the reverse proxy. The client speaks HTTPS to the proxy; the proxy speaks plain HTTP to backends over the private network.
 
 **Timeout**
-"If the backend hasn't replied in N seconds, give up." Without them, one slow backend hangs thousands of requests.
+A rule that aborts a request if a response has not been received within N seconds. Without timeouts, a single slow backend can hang thousands of concurrent client requests.
 
 **Retry**
-"If the backend returned 5xx, try again — maybe a different backend." Paired with a **retry budget** to avoid retry storms.
+If a backend returns a server error (5xx) or fails to respond, the proxy may resend the request — potentially to a different backend. Must be paired with a **retry budget** to prevent retry storms.
 
 **Backpressure**
-When the proxy realizes it can't push requests to backends fast enough, push back on clients (slow accepts, reject with 503) instead of buffering to OOM.
+The situation in which the proxy cannot push requests to backends as fast as clients are sending them. A well-behaved proxy responds by slowing new accepts or returning 503, rather than buffering unbounded amounts of memory until it OOMs.
 
 **Header rewriting**
-Adding/removing/changing headers as the proxy forwards. Classic: `X-Forwarded-For`, `X-Forwarded-Proto`.
+Adding, removing, or altering HTTP headers as the proxy forwards a request or response. Classic examples: `X-Forwarded-For` (records the original client IP), `X-Forwarded-Proto` (records the original scheme).
 
 **Sticky session**
-Always send the same client's requests to the same backend (cookie or IP hash). Needed for backends with in-memory session state.
+Consistently routing a given client's requests to the same backend (via a cookie or IP hash). Required for backends that hold in-memory session state.
 
 ---
 
 ## I/O and concurrency
 
 **Blocking I/O**
-`read()` sits and waits until data is available. Simple, but ties up a thread per connection. Doesn't scale past ~10k connections.
+A model in which an I/O operation (e.g. `read()`) suspends the calling thread until the operation completes. Simple to program, but each concurrent connection requires its own thread — which does not scale past ~10 000 connections.
 
 **Non-blocking I/O**
-`read()` returns immediately with `EAGAIN` if no data is ready. You check back later. This is what event loops use.
+A model in which an I/O operation returns immediately with `EAGAIN`/`EWOULDBLOCK` if it cannot make progress. The application must poll or use an event-notification mechanism to find out when the operation is ready. All modern high-performance servers use non-blocking I/O.
 
 **Event loop**
-A single thread watching many sockets at once. When a socket has data (or capacity), the loop wakes and handles it. Turn-based, single-threaded, extremely efficient.
+A programming construct that waits for and dispatches events. A single thread watches many sockets simultaneously; when a socket becomes readable or writable, the loop invokes the associated handler. Turn-based, single-threaded, extremely efficient.
 
 **epoll**
-Linux's classical event-loop primitive. `epoll_ctl` to register sockets, `epoll_wait` to block until something happens. Used by nginx, HAProxy, Envoy, and Cloudflare's Pingora.
+epoll is a Linux kernel system call for scalable I/O event notification. `epoll_ctl` registers file descriptors of interest, and `epoll_wait` blocks until one or more of them is ready. Used by nginx, HAProxy, Envoy, and Cloudflare's Pingora.
 
 **kqueue**
-BSD/macOS equivalent of epoll. Same idea, different API. **Not used by Switchyard** — included here for context when discussing other proxies. Switchyard is Linux-only; macOS developers use Docker/Colima.
+kqueue is BSD and macOS's equivalent of epoll — a scalable event-notification mechanism. Same idea, different API. **Not used by Switchyard**; included for context. Switchyard is Linux-only and macOS developers use Docker/Colima.
 
 **`io_uring`**
-Newer Linux syscall interface (since 5.1, matured in 5.11+, more so in 6.x). A pair of ring buffers (Submission Queue, Completion Queue) shared between userspace and the kernel. Userspace pushes I/O ops; kernel returns completions. Advantages over epoll:
-- **Batching**: many ops submitted with one `io_uring_enter` syscall (or zero, with `IORING_SETUP_SQPOLL`).
-- **Multishot ops**: `accept`/`recv` posted once, fires repeatedly.
-- **Registered buffers/fds**: `IORING_REGISTER_BUFFERS` pre-pins memory so kernel can DMA directly.
-- **True zero-copy send**: `IORING_OP_SEND_ZC` and `SENDMSG_ZC`.
-- **File I/O too**: unlike epoll, `io_uring` covers disk ops.
+`io_uring` is a Linux kernel interface for asynchronous I/O introduced in kernel 5.1 (2019). It uses a pair of ring buffers — a Submission Queue and a Completion Queue — shared between user space and the kernel. Applications place I/O requests on the Submission Queue and read results from the Completion Queue, with dramatically fewer system calls than epoll.
 
-**Submission Queue / Completion Queue (SQ/CQ)**
-The two ring buffers at the heart of `io_uring`. SQE = Submission Queue Entry (op you want done). CQE = Completion Queue Entry (result of a completed op).
+Advantages over epoll:
+- **Batching**: many operations submitted with one `io_uring_enter` (or zero, with `IORING_SETUP_SQPOLL`).
+- **Multishot ops**: `accept` / `recv` posted once, fire repeatedly.
+- **Registered buffers/fds**: `IORING_REGISTER_BUFFERS` pre-pins memory so the kernel can DMA directly.
+- **True zero-copy send**: `IORING_OP_SEND_ZC` and `SENDMSG_ZC`.
+- **File I/O too**: unlike epoll, `io_uring` covers disk operations.
+
+**Submission Queue / Completion Queue (SQ / CQ)**
+The two ring buffers at the heart of `io_uring`. An SQE (Submission Queue Entry) describes an operation to perform; a CQE (Completion Queue Entry) describes the result.
 
 **`SEND_ZC` (send-zerocopy)**
-`io_uring` op that lets the kernel DMA from your userspace buffer directly to the NIC without copying. Completes twice: once when kernel is done reading the buffer (you can now reuse it), once when the send is fully acknowledged.
+An `io_uring` operation that lets the kernel DMA bytes from a user-space buffer directly to the NIC without copying. It completes twice: once when the kernel has finished reading the buffer (so the caller may reuse it), and again when the send is fully acknowledged.
 
 **Multishot operations**
-`io_uring` feature where one submitted op (e.g. `multishot_accept`) keeps producing completions until you explicitly cancel it. Fewer syscalls per event.
+An `io_uring` feature where a single submitted operation (e.g. `multishot_accept`) keeps producing completions until the caller explicitly cancels it. Reduces the number of system calls per event.
 
 **Reactor**
-The pattern where an event loop dispatches ready-socket events to handlers. "When socket X is readable, call handler Y." Rung 1's core class.
+The reactor design pattern is a concurrency model in which an event demultiplexer waits for events on multiple resources and dispatches them to handlers. "When socket X is readable, call handler Y." Rung 1's core class implements this pattern on top of `io_uring`.
 
 **C++20 coroutines**
-Language-level suspend/resume support. Lets `co_await reactor.recv(fd, buf)` look sequential while actually being asynchronous. Used to write reactor callbacks without callback hell.
+Language-level support in C++20 for functions that can suspend and resume execution. Coroutines let `co_await reactor.recv(fd, buf)` read as sequential code while actually being asynchronous under the hood — used in Switchyard to avoid callback-style code around `io_uring`.
 
 **Multithreading**
-Multiple OS threads sharing memory. Cheap communication, hard synchronization. Used sparingly in Switchyard (thread-per-core, shared-nothing).
+Multithreading is the ability of a CPU (or a single core) to provide multiple threads of execution concurrently, supported by the operating system. Threads within a process share memory but each has its own stack and register state.
 
 **Thread-per-core**
-Pin one thread per CPU core, each running its own reactor. No shared mutable state between them. What HAProxy, Envoy, and Pingora do.
+An architectural pattern in which one thread is pinned to each CPU core, each running its own event loop with no shared mutable state between threads. Used by HAProxy, Envoy, and Pingora. Switchyard adopts it starting at Rung 5.
 
 ---
 
 ## Zero-copy and kernel-assisted I/O
 
 **Memory copy (`memcpy`)**
-Moving bytes from one memory location to another. Costs CPU cycles, memory bandwidth, and L1/L2 cache pressure. On a busy proxy, memory copies alone can be 30-50% of total CPU.
+`memcpy` is a standard C library function that copies a block of bytes from one memory location to another. Each byte crosses the memory bus, consuming CPU cycles, memory bandwidth, and L1/L2 cache. On a busy reverse proxy, `memcpy` alone can account for 30–50% of total CPU time.
 
 **Zero-copy**
-Any technique that moves data (from client → proxy → backend) without allocating a userspace buffer and calling `memcpy`. Bytes stay in the kernel or move directly via DMA.
+Zero-copy refers to a class of techniques in which data is transferred between the source and destination without being copied through a user-space buffer. Bytes either stay inside the kernel or move directly via DMA between hardware and memory.
 
 **`writev` / `sendmsg`**
-Gather-I/O syscalls. Take a list of `{pointer, length}` pairs (an `iovec`) and write them all in one call. Kernel handles the "merge" without needing you to concatenate in userspace. Used to send `[modified_headers, original_body_view]` in one op.
+POSIX gather-I/O system calls that accept a list of `{pointer, length}` pairs (an `iovec`) and write them all in a single call. The kernel handles the "merge," so user space does not need to concatenate the pieces itself. Switchyard uses `writev` to send `[modified_headers, original_body_view]` in one operation.
 
 **`iovec`**
-The `struct iovec { void* iov_base; size_t iov_len; }` used by `writev`/`readv`/`sendmsg`.
+The POSIX structure `struct iovec { void *iov_base; size_t iov_len; }`, used with `writev`, `readv`, and `sendmsg` to describe a scatter/gather list of memory regions.
 
 **`splice()`**
-Linux syscall that moves bytes between two file descriptors *without copying to userspace*. Bytes flow kernel-to-kernel via a pipe. Perfect for forwarding request/response bodies.
+A Linux system call that moves bytes between two file descriptors without copying them to user space. Data flows kernel-to-kernel via an intermediate pipe. Ideal for forwarding request/response bodies through a proxy.
 
 **`sendfile()`**
-Older Linux syscall for moving file → socket without userspace copy. Predecessor of `splice`.
+A Linux system call that copies data from a file descriptor (typically a file) to another (typically a socket) inside the kernel. The predecessor of `splice`, and still used for serving static files.
 
 **Zero-copy framing (HTTP/2)**
-Parsing and writing HTTP/2 frames without copying payload bytes. Frame headers (9 bytes) built in userspace; payloads represented as `{ptr, len}` views over the original recv buffer.
+Parsing and constructing HTTP/2 frames without ever copying the payload bytes. Frame headers (9 bytes) are built in user space; payloads are represented as `{pointer, length}` views into the original receive buffer.
 
 **`HeaderView`**
-Switchyard's zero-copy header representation. `{name_offset, name_length, value_offset, value_length}` — a view into the recv buffer, not a `std::string`. See `src/http/request.h`.
+Switchyard's zero-copy representation of an HTTP header: `{name_offset, name_length, value_offset, value_length}` — a view into the receive buffer, never a `std::string`. See `src/http/request.h`.
 
 **Registered buffers (`IORING_REGISTER_BUFFERS`)**
-`io_uring` feature that pre-pins a set of userspace buffers so the kernel can DMA to/from them without page-table walks. Required for `SEND_ZC`.
+An `io_uring` feature that pre-pins a set of user-space buffers with the kernel, so subsequent operations can DMA into or out of them without page-table walks. Required for `SEND_ZC`.
 
 ---
 
 ## TLS and cryptography
 
 **TLS (Transport Layer Security)**
-Encryption + authentication layer on top of TCP. Every `https://` URL rides TLS. Current versions: TLS 1.2 (widely deployed), TLS 1.3 (modern default).
+TLS is a cryptographic protocol that provides secure communication over a computer network. It provides three guarantees: confidentiality (encryption), integrity (tamper detection), and authentication (identity verification via X.509 certificates).
+
+TLS 1.2 is the most widely deployed version; TLS 1.3 (RFC 8446, 2018) is the modern default. Every `https://` URL rides TLS.
 
 **TLS handshake**
-The initial exchange (1-2 RTT) where client and server agree on ciphers, exchange keys, and authenticate via certificates. Expensive.
+The initial protocol exchange (one or two round-trips) in which the client and server negotiate a cipher suite, exchange key material, and authenticate via certificates. Handshakes are computationally expensive relative to the steady-state data transfer that follows.
 
 **TLS session resumption**
-Skip the full handshake on subsequent connections by presenting a session ticket. Saves 1 RTT and a lot of CPU.
+An optimisation that skips the full handshake on subsequent connections between the same client and server, by presenting a previously issued session ticket or session ID. Saves at least one round-trip and a significant amount of CPU.
 
 **Session ticket**
-An opaque token issued by the server that a client can present to skip a full handshake.
+An opaque, server-issued token that a client can present on a later connection to resume a previous TLS session without a full handshake.
 
 **kTLS (Kernel TLS)**
-Linux kernel feature (since 4.13) that moves TLS record framing and encryption/decryption into the kernel. Userspace handles the handshake, then hands the negotiated keys to the kernel via `setsockopt(TCP_ULP, "tls")`. After that, plain `send()` writes get encrypted in-kernel and DMA'd to the NIC. Eliminates the userspace ↔ kernel bounce for every record.
+kTLS is a Linux kernel feature (introduced in kernel 4.13, 2017) that moves TLS record framing and symmetric encryption/decryption from user space into the kernel. User space still performs the handshake; the negotiated keys are then handed to the kernel via `setsockopt(SOL_TCP, TCP_ULP, "tls")`. After this, plain `send()` writes are encrypted in-kernel and DMA'd directly to the NIC, eliminating the user-space ↔ kernel record bounce.
 
 **BoringSSL / OpenSSL**
-Cryptographic libraries. BoringSSL is Google's fork of OpenSSL (used by Chrome, Envoy, gRPC). OpenSSL is the mainline. Both support kTLS setup.
+BoringSSL and OpenSSL are cryptographic libraries providing TLS implementations. OpenSSL is the mainline project used by most of the software ecosystem; BoringSSL is Google's fork used by Chrome, Envoy, and gRPC. Both support kTLS setup.
 
-**AES-NI**
-Intel/AMD CPU instructions that accelerate AES encryption. Any modern proxy relies on them. kTLS uses them from the kernel.
+**AES-NI (Advanced Encryption Standard – New Instructions)**
+AES-NI is a set of x86 CPU instructions introduced by Intel and AMD that accelerate AES encryption and decryption in hardware. Any modern TLS-terminating proxy relies on them; kTLS invokes them from inside the kernel.
 
 ---
 
 ## Concurrency and lock-freedom
 
-**Lock / mutex**
-A primitive that ensures only one thread accesses shared state at a time. Correct but slow — contention becomes visible above ~50k RPS/core.
+**Mutex (mutual exclusion)**
+A mutex is a synchronisation primitive used to protect a shared resource from concurrent access by multiple threads. Only one thread can hold a mutex at a time; others wait until it is released.
+
+Correct but potentially slow: contention becomes visible in profilers once request rates exceed ~50 000 per core.
 
 **Lock-free**
-Data structures that don't use mutexes. Progress is guaranteed for *some* thread at any time. Uses atomic operations (compare-and-swap, atomic increments).
+Lock-free is a property of a concurrent algorithm that guarantees at least one thread will make progress at any given moment, without using traditional locks. Achieved via atomic operations such as compare-and-swap.
 
 **Wait-free**
-Stronger than lock-free. Every thread makes progress in bounded time, regardless of contention. Ideal for hot paths.
+Wait-free is a stronger progress guarantee than lock-free: every thread completes any given operation in a bounded number of steps, regardless of contention. Ideal for hot paths where tail latency matters.
 
 **MPMC queue (Multi-Producer Multi-Consumer)**
-A queue that multiple threads can push to and pop from concurrently. Lock-free variants (e.g. Vyukov's MPMC) are used for Switchyard's upstream connection pool at Rung 5.
+A concurrent queue that multiple threads may push to and multiple threads may pop from simultaneously. Lock-free implementations (for example Vyukov's MPMC queue) are used in Switchyard's global upstream connection pool at Rung 5.
 
 **RCU (Read-Copy-Update)**
-Concurrency pattern where readers see a snapshot of state without locking. Writers build a *new* snapshot, then atomically swap a pointer. Readers finish with the old snapshot; a "grace period" ensures nobody is still reading before the old snapshot is freed. Perfect for hot config swap and endpoint tables.
+RCU is a synchronisation mechanism used extensively in the Linux kernel. Readers access shared data without any locking; writers create a new copy of the data structure and atomically swap a pointer to it. Old readers finish with the previous copy, and a grace period ensures no reader is still accessing the old copy before it is freed.
+
+RCU is a good fit for hot-swappable configuration, endpoint tables, and any data structure that is read very frequently and written rarely.
 
 **Per-CPU data**
-State stored per-CPU with no cross-CPU synchronization. Reads are cheap (local); writes are cheap (local). Aggregation happens on demand (e.g. summing per-CPU counters to answer a metrics scrape).
+State that is stored per-CPU with no cross-CPU synchronisation. Both reads and writes are local (and therefore cheap). Aggregation (for example, summing per-CPU counters for a metrics scrape) happens on demand.
 
 **Atomic**
-A memory operation guaranteed to be indivisible. `std::atomic<uint64_t>::fetch_add(1, memory_order_relaxed)` is a cheap atomic increment.
+An operation is atomic if it appears to occur instantaneously from the perspective of other threads — it cannot be interleaved with another operation. Modern hardware provides atomic instructions such as compare-and-swap and atomic add. Example: `std::atomic<uint64_t>::fetch_add(1, std::memory_order_relaxed)`.
 
 **False sharing**
-Two variables that logically don't share state end up in the same CPU cache line. Threads updating each variable ping-pong the cache line between cores, killing performance. Avoided by cache-line-aligning per-CPU data.
+False sharing occurs when two variables that are logically independent are placed in the same CPU cache line. Threads updating each variable cause the cache line to bounce between cores, degrading performance. Avoided by cache-line-aligning per-CPU data.
 
 **Cache line**
-The unit of memory transfer between RAM and CPU cache. Usually 64 bytes on x86-64. Struct layouts should be designed with cache lines in mind.
+A cache line is the unit of memory transfer between main memory (RAM) and CPU cache. On x86-64, a cache line is 64 bytes. Data-structure layout should take cache-line boundaries into account.
 
 **NUMA (Non-Uniform Memory Access)**
-On multi-socket servers, each CPU has "local" RAM (fast) and "remote" RAM (slower). NUMA-aware code pins threads and their data to the same node.
+NUMA is a memory-architecture design used in multi-socket servers, where each CPU has its own local memory that it can access faster than memory attached to another CPU. NUMA-aware software pins threads and their working sets to the same NUMA node.
 
 ---
 
 ## Observability
 
 **Log**
-Single line of text saying "this happened." Cheap to write, hard to correlate.
+A log is a timestamped record of a discrete event ("this happened"). Logs are cheap to write but expensive to correlate across services.
 
 **Metric**
-A number that changes over time, aggregated by a metrics system (Prometheus). Example: `switchyard_requests_total`.
+A metric is a numeric measurement that changes over time, typically aggregated by a monitoring system such as Prometheus. Example: `switchyard_requests_total`.
 
 **Trace**
-Structured record of one specific request through the system, with per-phase timing. Answers "why was *this* request slow." Rung 11.
+A trace is a structured record of a single request as it moves through a system, capturing per-phase timing. Traces answer the question "why was *this specific* request slow?" Rung 11.
 
 **Span**
-One phase within a trace. A request might span accept, TLS handshake, route decision, upstream connect, upstream response.
+A span represents a single operation or phase within a trace. A request through Switchyard may include spans for accept, TLS handshake, route decision, upstream connect, and upstream response.
 
 **p50, p95, p99, p999**
-Percentiles. p99 latency = "99% of requests were faster than this." The tail (p99, p999) is what users notice; averages hide it. **Watch the tail.**
+Percentile latency values. For example, p99 latency = "99% of requests were faster than this value." The tail (p99, p999) is what users actually perceive; simple averages hide it. **Watch the tail.**
 
 **High-cardinality metric**
-A metric with many unique label combinations (e.g. `path` as a label). Explodes storage cost in Prometheus. Switchyard exposes low-cardinality metrics by default.
+A metric label whose value space is very large (for example, `path` as a label). High-cardinality labels explode storage cost in Prometheus. Switchyard exposes low-cardinality metrics by default.
 
 ---
 
 ## Systems anti-patterns and failure modes
 
 **Head-of-line blocking (HoL)**
-Slow request blocks all requests behind it on the same connection. HTTP/1.1 has request-level HoL; HTTP/2 has TCP-level HoL (one dropped packet stalls all streams); HTTP/3 fixes both.
+Head-of-line blocking occurs when the first in-flight request delays every request queued behind it on the same connection. HTTP/1.1 has request-level HoL; HTTP/2 has TCP-level HoL (one dropped packet stalls all streams); HTTP/3 fixes both by moving to QUIC.
 
 **Slowloris**
-Attack (or slow mobile client) that opens many connections and sends bytes very slowly, tying up server resources. Countered with idle timeouts + per-IP connection caps.
+Slowloris is a denial-of-service attack (or, unintentionally, a slow mobile client) in which many connections are opened and data is sent at an extremely low rate, tying up server resources. Mitigated with idle timeouts and per-IP connection caps.
 
 **Thundering herd**
-Many clients retry at exactly the same time (e.g. right after an outage recovers), overwhelming the recovered service. Countered with jitter.
+Thundering herd is a failure mode in which many clients retry at exactly the same moment — for example immediately after an outage recovers — overwhelming the recovered service. Mitigated with jittered retry timing.
 
 **Cold start**
-Fresh backend joins the pool but its caches/JIT/connection pools are empty. First N requests are slow. LB should ramp traffic gradually.
+Cold start occurs when a new backend instance joins the pool with empty caches, empty JIT code caches, and empty connection pools. Its first N requests are slow. A load balancer should ramp traffic to a cold instance gradually.
 
 **Retry storm**
-Partial failure becomes total because every failed request gets retried, multiplying load on the struggling backend. Distributed-systems failure mode.
+A retry storm is a distributed-systems failure mode in which a partial backend failure becomes total because every failed request is retried, multiplying the load on the already-struggling backend. Prevented with retry budgets and circuit breakers.
 
 ---
 
 ## Reference proxies (for comparison)
 
 **nginx**
-The most-deployed reverse proxy. Master + N workers, epoll, C, per-worker state. Config in `nginx.conf`. Reload via SIGHUP forks new workers.
+The most-deployed reverse proxy. Master + N workers, epoll, C, per-worker state. Config in `nginx.conf`. Reload via `SIGHUP` forks new workers and drains old ones.
 
 **HAProxy**
-L4/L7 load balancer. C, epoll, master-worker mode since 1.8 with seamless reload via `SO_REUSEPORT` + `SCM_RIGHTS` fd passing.
+Widely deployed L4/L7 load balancer. C, epoll, master-worker mode since 1.8 with seamless reload via `SO_REUSEPORT` and `SCM_RIGHTS` file-descriptor passing.
 
 **Envoy**
-Modern service-mesh proxy. C++, epoll, thread-per-CPU, xDS dynamic config from a control plane (Istio uses it). Rich filter chain; heavy memory footprint.
+Modern service-mesh proxy. C++, epoll, thread-per-CPU, dynamic configuration via xDS from an external control plane (Istio, Consul, etc.). Rich HTTP filter chain; comparatively heavy memory footprint.
 
 **Pingora**
-Cloudflare's Rust proxy framework. `tokio` runtime (epoll-based), work-stealing scheduler. Not a drop-in proxy — a library.
+Cloudflare's Rust proxy framework. Runs on the `tokio` async runtime (epoll-based), work-stealing scheduler. Distributed as a library rather than a drop-in proxy binary.
 
 **Traefik / Caddy**
-Go-based proxies with easy config and auto-TLS. GC-pause tail-latency limits them for extreme-throughput scenarios.
+Go-based reverse proxies with easy configuration and automatic TLS certificate management. Garbage-collection pauses limit tail-latency stability at extreme throughput.
+
+**h2o**
+C-based HTTP server and proxy known for very low overhead and the reference `picohttpparser` implementation.
 
 **picohttpparser**
-Reference SIMD-accelerated HTTP/1.1 parser used by h2o. Good baseline for what a fast parser looks like.
+A SIMD-accelerated HTTP/1.1 parser used by h2o. Serves as a baseline for what a fast, zero-copy HTTP parser looks like.
 
 ---
 
 ## Kubernetes (for future rungs if Switchyard runs there)
 
 **Pod**
-Smallest deployable unit in K8s. One or more containers sharing network namespace + volumes.
+A pod is the smallest deployable unit in Kubernetes. It consists of one or more containers that share a network namespace and storage volumes.
 
 **Service**
-K8s abstraction that gives a stable virtual IP + DNS name for a set of pods. Routes to pod IPs behind the scenes.
+A Kubernetes Service is an abstraction that defines a stable virtual IP and DNS name for a dynamic set of pods, routing traffic to the currently healthy pod IPs behind the scenes.
 
 **EndpointSlice**
-K8s object listing the actual pod IPs backing a Service, sliced for scalability. What a proxy would watch to know its upstreams.
+An EndpointSlice is a Kubernetes API object that lists the actual pod IPs backing a Service, sliced into groups for scalability. A proxy watches EndpointSlices to know its current set of upstreams.
 
 **Node**
-A physical or virtual machine in the K8s cluster. Pods run on nodes.
+A Node in Kubernetes is a physical or virtual machine that runs pods. Nodes are managed by the control plane.
 
-**Zone / AZ (Availability Zone)**
-Cloud-provider concept: an isolated datacenter within a region. Cross-zone traffic costs money (~$0.01/GB per direction on AWS/GCP/Azure).
+**Zone / Availability Zone (AZ)**
+A zone is an isolated failure domain within a cloud-provider region — typically a separate data-centre with its own power and cooling. Cross-zone network traffic is billed by the major cloud providers at roughly $0.01 per GB per direction.
 
 **Rolling deploy**
-K8s update strategy: replace pods one at a time (or in batches) with the new version. Old pods drained via SIGTERM + `terminationGracePeriodSeconds`.
+A Kubernetes update strategy in which pods are replaced with the new version one at a time (or in small batches). Old pods are drained via `SIGTERM` and `terminationGracePeriodSeconds` before the new pods come online.
 
 **`terminationGracePeriodSeconds`**
-How long K8s waits between SIGTERM and SIGKILL when terminating a pod. Default 30s.
+A field on a Kubernetes pod spec specifying how long the kubelet waits between sending `SIGTERM` and `SIGKILL` when terminating a pod. Default is 30 seconds.
 
 **Sidecar**
-A second container in the same pod as the main app. Envoy in Istio is a sidecar per app pod.
+A sidecar is a supporting container running alongside the main application container within the same pod. In Istio, an Envoy sidecar runs beside every application pod to handle service-mesh traffic.
