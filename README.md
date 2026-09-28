@@ -26,7 +26,7 @@ Every operating system splits into two worlds — the **kernel** and **userspace
 | Term | Definition |
 |:---|:---|
 | **Kernel** | The core part of an operating system. Acts as a bridge between software applications and the hardware of a computer, managing system resources — CPU, memory, and devices. |
-| **User space** | The memory area where all user-mode applications (nginx, your app, this proxy) run. Separated from kernel space to prevent applications from directly touching critical system resources. |
+| **User space** | The memory area (stack, heap, code, shared libraries — all backed by physical RAM) where all user-mode applications (nginx, your app, this proxy) run. Separated from kernel space to prevent applications from directly touching critical system resources. |
 | **System call** (`syscall`) | The interface that lets a user program request services from the kernel — read a byte from the network, send one back, open a file. Each syscall is a **boundary crossing** between userspace and kernel, and each crossing costs CPU cycles. |
 
 When data flows through a program, it usually gets copied (`memcpy`) from kernel memory into the program's memory, then copied back out. **Every byte, twice.**
