@@ -21,21 +21,33 @@
 
 **Your reverse proxy is burning half its CPU on `memcpy` and `syscalls`.**
 
-Every operating system splits into two worlds: the **kernel** and **userspace**.
+Every operating system splits into two worlds — the **kernel** and **userspace**. Three terms to know before we go further:
 
-> A **kernel** is the core part of an operating system. It acts as a bridge between software applications and the hardware of a computer. The kernel manages system resources — such as the CPU, memory, and devices — ensuring everything works together smoothly and efficiently.
+| Term | Definition |
+|:---|:---|
+| **Kernel** | The core part of an operating system. Acts as a bridge between software applications and the hardware of a computer, managing system resources — CPU, memory, and devices. |
+| **User space** | The memory area where all user-mode applications (nginx, your app, this proxy) run. Separated from kernel space to prevent applications from directly touching critical system resources. |
+| **System call** (`syscall`) | The interface that lets a user program request services from the kernel — read a byte from the network, send one back, open a file. Each syscall is a **boundary crossing** between userspace and kernel, and each crossing costs CPU cycles. |
 
-> **User space** is the memory area where all user-mode applications (nginx, your app, this proxy) run. It is separated from kernel space to prevent applications from directly accessing critical system resources.
+When data flows through a program, it usually gets copied (`memcpy`) from kernel memory into the program's memory, then copied back out. **Every byte, twice.**
 
-> A **system call** (syscall) is the mechanism that provides an interface between a program and the operating system. It allows a user program to request services from the OS kernel — for example, read a byte from the network, send one back, or open a file.
+Now the punchline: **a reverse proxy does almost nothing *except* shuffle traffic between sockets.** So on a busy proxy, syscalls and `memcpy` **are** the workload. Get them wrong and 30-50% of your CPU disappears into the plumbing itself — not routing, not TLS, not health checks. Just moving bytes back and forth across the kernel/userspace boundary.
 
-Every syscall crosses the boundary between userspace and kernel, and that boundary crossing costs CPU. When data flows through, it usually gets copied (`memcpy`) from kernel memory into your program's memory, then copied back out. Every byte, twice.
+That's exactly what nginx, HAProxy, and Envoy do today. All three were designed when **1 Gbps was fast** (nginx: 2004). At the time the kernel had nothing better than `epoll` for waiting on sockets, no way to do TLS inside the kernel, and no way to avoid the copies. Every byte still makes the round trip. Every request still pays 4-6 syscalls.
 
-A reverse proxy is a program that does *almost nothing except shuffle traffic between sockets*. So on a busy proxy, syscalls and `memcpy` **are** the workload. Get them wrong and you can spend 30-50% of your total CPU on the plumbing itself — not on routing, not on TLS, not on health checks. Just on moving bytes back and forth across the kernel/userspace boundary.
+On today's hardware — **100 Gbps NICs**, **64+ cores**, HTTPS everywhere — that waste turns into real money:
 
-That's exactly what happens today with nginx, HAProxy, and Envoy. All three were designed when 1 Gbps was fast (nginx: 2004) and the kernel offered nothing better than `epoll` for waiting on sockets, no way to do TLS inside the kernel, and no way to avoid the copies. So every byte still does the round trip; every request still pays 4-6 syscalls.
+- **Fleets twice as big as they should be**
+- **Tail latency you can't cut**
+- **A compute bill you don't need to be paying**
 
-On today's hardware (100 Gbps NICs, 64+ cores, HTTPS everywhere), that waste is real money: **fleets twice as big as they should be, tail latency you can't cut, and a compute bill you don't need to be paying.** Meanwhile the Linux kernel has quietly shipped the tools to eliminate all of it — **`io_uring`** in 2019 (batch many operations into one boundary crossing), **`kTLS`** in 2017 (encrypt inside the kernel, no more crypto-buffer bounce), **`SEND_ZC`** in 2022 (send bytes to the NIC without copying them to userspace at all). **No mainline L7 proxy has re-architected around any of these.**
+Meanwhile, the Linux kernel has quietly shipped the tools to eliminate every drop of it:
+
+- **`io_uring`** (2019) — batch many operations into one boundary crossing
+- **`kTLS`** (2017) — encrypt inside the kernel, no more crypto-buffer bounce
+- **`SEND_ZC`** (2022) — send bytes to the NIC without copying them to userspace at all
+
+**No mainline L7 proxy has re-architected around any of these.**
 
 Three specific places the CPU leaks in nginx / HAProxy / Envoy today:
 
