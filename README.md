@@ -19,19 +19,23 @@
 
 ## The Problem
 
-**Your reverse proxy is burning half its CPU on `memcpy` and syscalls.**
+**Your reverse proxy is burning half its CPU on `memcpy` and `syscalls`.**
 
-Not routing. Not TLS. Not health checks. Not filter logic. Just shuffling bytes between the kernel and userspace, over and over, using patterns nginx locked in when 1 Gbps was fast — in 2004.
+Quick refresher: every operating system splits into two worlds — the **kernel** (owns the network card, memory, and disks) and **userspace** (where your programs run). Every time your program asks the kernel for something — read a byte from the network, send one back — that's a **syscall**: a boundary crossing that costs CPU. And when data flows through, it usually gets copied (`memcpy`) from kernel memory into your program's memory, then copied back out. Every byte, twice.
 
-On today's hardware (100 Gbps NICs, 64+ cores, HTTPS everywhere), that waste is real money: **fleets twice as big as they should be, tail latency you can't cut, and a compute bill you don't need to be paying.** The Linux kernel added `io_uring` in 2019, kTLS in 2017, `SEND_ZC` in 2022. **No mainline L7 proxy has re-architected around any of them.**
+A reverse proxy is a program that does *almost nothing except shuffle traffic between sockets*. So on a busy proxy, syscalls and `memcpy` **are** the workload. Get them wrong and you can spend 30-50% of your total CPU on the plumbing itself — not on routing, not on TLS, not on health checks. Just on moving bytes back and forth across the kernel/userspace boundary.
 
-Three specific places CPU leaks:
+That's exactly what happens today with nginx, HAProxy, and Envoy. All three were designed when 1 Gbps was fast (nginx: 2004) and the kernel offered nothing better than `epoll` for waiting on sockets, no way to do TLS inside the kernel, and no way to avoid the copies. So every byte still does the round trip; every request still pays 4-6 syscalls.
 
-| Where CPU leaks | Why |
+On today's hardware (100 Gbps NICs, 64+ cores, HTTPS everywhere), that waste is real money: **fleets twice as big as they should be, tail latency you can't cut, and a compute bill you don't need to be paying.** Meanwhile the Linux kernel has quietly shipped the tools to eliminate all of it — **`io_uring`** in 2019 (batch many operations into one boundary crossing), **`kTLS`** in 2017 (encrypt inside the kernel, no more crypto-buffer bounce), **`SEND_ZC`** in 2022 (send bytes to the NIC without copying them to userspace at all). **No mainline L7 proxy has re-architected around any of these.**
+
+Three specific places the CPU leaks in nginx / HAProxy / Envoy today:
+
+| Where CPU leaks | What's actually happening |
 |---|---|
-| **Syscall overhead** | nginx, HAProxy, and Envoy all still use `epoll`. Every request costs 4-6 syscalls. `io_uring` can amortize this to nearly one. |
-| **Userspace memory copies** | Each request byte gets memcpy'd 3-4 times: kernel → recv buffer → parsed struct → send buffer → kernel. On a busy proxy that's 30-50% of total CPU. |
-| **Userspace TLS record framing** | Encryption bytes bounce between userspace crypto libraries and kernel sockets. kTLS eliminates that bounce and goes direct to the NIC. |
+| **Syscall overhead** | Every request pays 4-6 boundary crossings via `epoll` + `read` + `write` + `close`. `io_uring` batches them so it amortizes to roughly one. |
+| **Userspace memory copies** | Each request byte gets `memcpy`'d 3-4 times: kernel → recv buffer → parsed struct → send buffer → kernel. On busy proxies that's 30-50% of total CPU spent just moving bytes around. |
+| **Userspace TLS record framing** | For HTTPS, encryption bytes bounce between userspace crypto (OpenSSL) and kernel sockets. `kTLS` moves the framing into the kernel so encrypted data goes direct to the NIC. |
 
 A modern box that could push 100 Gbps of proxied traffic on paper delivers 30-50 Gbps in practice. The CPU is busy moving bytes, not serving requests. At scale that's **fleet size × 2, tail latency × 2, cost × 2** — and nobody has fixed it.
 
