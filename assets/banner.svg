@@ -1,0 +1,128 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 200">
+  <defs>
+    <clipPath id="rounded">
+      <rect width="860" height="200" rx="12"/>
+    </clipPath>
+
+    <!-- Blankish base: very light warm off-white gradient -->
+    <linearGradient id="baseGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"   stop-color="#FBF7F0"/>
+      <stop offset="100%" stop-color="#F5EDDF"/>
+    </linearGradient>
+
+    <!-- Very subtle warm hint on the right side (barely visible) -->
+    <radialGradient id="glowR" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"   stop-color="#FDBA74" stop-opacity="0.25"/>
+      <stop offset="100%" stop-color="#FDBA74" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Extremely subtle dot texture -->
+    <pattern id="dots" x="0" y="0" width="22" height="22" patternUnits="userSpaceOnUse">
+      <circle cx="11" cy="11" r="1" fill="#C2410C" opacity="0.06"/>
+    </pattern>
+
+    <!-- Orange gradient accent bar at top -->
+    <linearGradient id="accentBar" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"   stop-color="#FDBA74"/>
+      <stop offset="50%"  stop-color="#F97316"/>
+      <stop offset="100%" stop-color="#C2410C"/>
+    </linearGradient>
+
+    <!-- Orange logo tile gradient (this is now the focal point) -->
+    <linearGradient id="tileGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"   stop-color="#FB923C"/>
+      <stop offset="100%" stop-color="#C2410C"/>
+    </linearGradient>
+
+    <!-- Wordmark: dark warm brown (readable on blankish background) -->
+    <linearGradient id="wordmarkGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%"   stop-color="#1C1917"/>
+      <stop offset="100%" stop-color="#292524"/>
+    </linearGradient>
+
+    <!-- Primary badge fill (soft warm) -->
+    <linearGradient id="badgeFill" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"   stop-color="#FFF7ED"/>
+      <stop offset="100%" stop-color="#FED7AA"/>
+    </linearGradient>
+
+    <!-- Strong drop shadow to lift the orange tile off the pale background -->
+    <filter id="tileFloat" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="7"/>
+      <feOffset dx="0" dy="5"/>
+      <feComponentTransfer><feFuncA type="linear" slope="0.30"/></feComponentTransfer>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Softer shadow for the chevron itself -->
+    <filter id="chevShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="1.5"/>
+      <feOffset dx="0" dy="1"/>
+      <feComponentTransfer><feFuncA type="linear" slope="0.30"/></feComponentTransfer>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <g clip-path="url(#rounded)">
+    <!-- ─────────────── BLANKISH BACKGROUND ─────────────── -->
+    <rect width="860" height="200" fill="url(#baseGrad)"/>
+    <rect width="860" height="200" fill="url(#dots)"/>
+    <ellipse cx="700" cy="130" rx="280" ry="150" fill="url(#glowR)"/>
+
+    <!-- Hair-thin warm border -->
+    <rect x="0.5" y="0.5" width="859" height="199" rx="12" fill="none" stroke="#FDBA74" stroke-opacity="0.55" stroke-width="1"/>
+
+    <!-- Gradient accent bar at very top -->
+    <rect x="0" y="0" width="860" height="3" fill="url(#accentBar)"/>
+
+    <!-- ─────────────── ORANGE FLOATING LOGO TILE (focal point) ─────────────── -->
+    <g filter="url(#tileFloat)">
+      <rect x="42" y="42" width="116" height="116" rx="20" fill="url(#tileGrad)"/>
+    </g>
+    <!-- Ghosted back chevron (soft light on orange) -->
+    <path d="M 68 80 L 100 100 L 68 120"
+          stroke="#FFFFFF" stroke-width="8"
+          stroke-linecap="round" stroke-linejoin="round"
+          fill="none" opacity="0.45"/>
+    <!-- Foreground bold WHITE chevron with soft shadow — high contrast against orange -->
+    <path d="M 96 74 L 138 100 L 96 126"
+          stroke="#FFFFFF" stroke-width="15"
+          stroke-linecap="round" stroke-linejoin="round"
+          fill="none" filter="url(#chevShadow)"/>
+
+    <!-- Vertical divider — warm accent -->
+    <line x1="186" y1="60" x2="186" y2="140" stroke="#FDBA74" stroke-opacity="0.6" stroke-width="1"/>
+
+    <!-- ─────────────── WORDMARK — dark on blankish ─────────────── -->
+    <text x="212" y="98"
+          font-family="'Inter', 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif"
+          font-size="52" font-weight="800" fill="url(#wordmarkGrad)" letter-spacing="-1.2">
+      Switchyard
+    </text>
+
+    <text x="214" y="128"
+          font-family="'Inter', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif"
+          font-size="13.5" font-weight="500" fill="#78716C" letter-spacing="0.4">
+      HTTP/HTTPS reverse proxy · io_uring · kTLS · C++20
+    </text>
+
+    <!-- ─────────────── RIGHT SIDE BADGES ─────────────── -->
+    <rect x="672" y="72" width="72" height="28" rx="6" fill="#FFFFFF" stroke="#E7D7BF" stroke-width="1"/>
+    <text x="708" y="86" font-family="'JetBrains Mono', 'SF Mono', 'Fira Code', monospace"
+          font-size="11" fill="#78716C" text-anchor="middle" dominant-baseline="central">v0.1.0</text>
+
+    <rect x="752" y="72" width="60" height="28" rx="6" fill="#FFFFFF" stroke="#E7D7BF" stroke-width="1"/>
+    <text x="782" y="86" font-family="'JetBrains Mono', 'SF Mono', 'Fira Code', monospace"
+          font-size="11" fill="#78716C" text-anchor="middle" dominant-baseline="central">MIT</text>
+
+    <rect x="672" y="108" width="140" height="28" rx="6" fill="url(#badgeFill)" stroke="#F97316" stroke-width="1"/>
+    <text x="742" y="122" font-family="'JetBrains Mono', 'SF Mono', 'Fira Code', monospace"
+          font-size="11" font-weight="600" fill="#9A3412" text-anchor="middle" dominant-baseline="central">C++20 · Linux</text>
+  </g>
+</svg>

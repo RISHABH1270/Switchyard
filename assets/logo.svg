@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <defs>
+    <!-- Soft coral tile gradient (background of the mark) -->
+    <linearGradient id="tileGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"   stop-color="#FFEDD5"/>
+      <stop offset="100%" stop-color="#FED7AA"/>
+    </linearGradient>
+
+    <!-- Deep orange chevron gradient (foreground) -->
+    <linearGradient id="chevronGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"   stop-color="#F97316"/>
+      <stop offset="100%" stop-color="#C2410C"/>
+    </linearGradient>
+
+    <!-- Very subtle drop shadow to lift the chevron off the tile -->
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="2"/>
+      <feOffset dx="0" dy="2"/>
+      <feComponentTransfer><feFuncA type="linear" slope="0.25"/></feComponentTransfer>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- White outer container -->
+  <rect x="0.5" y="0.5" width="199" height="199" rx="24" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1"/>
+
+  <!-- Inner tile: soft coral gradient rounded square (adds depth) -->
+  <rect x="34" y="34" width="132" height="132" rx="22" fill="url(#tileGrad)"/>
+
+  <!-- Ghosted back chevron (lightest shade, low opacity — motion trail feel) -->
+  <path d="M 60 65 L 100 100 L 60 135"
+        stroke="#FDBA74" stroke-width="10"
+        stroke-linecap="round" stroke-linejoin="round"
+        fill="none" opacity="0.55"/>
+
+  <!-- Foreground bold chevron with gradient + soft shadow -->
+  <path d="M 90 60 L 140 100 L 90 140"
+        stroke="url(#chevronGrad)" stroke-width="18"
+        stroke-linecap="round" stroke-linejoin="round"
+        fill="none" filter="url(#softShadow)"/>
+</svg>
