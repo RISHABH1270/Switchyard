@@ -4,33 +4,32 @@
       <rect width="860" height="200" rx="12"/>
     </clipPath>
 
-    <!-- Rich warm gradient background: cream → peach → light coral -->
+    <!-- Dark navy base with subtle warmth -->
     <linearGradient id="baseGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%"   stop-color="#FFF7ED"/>
-      <stop offset="45%"  stop-color="#FFEDD5"/>
-      <stop offset="100%" stop-color="#FED7AA"/>
+      <stop offset="0%"   stop-color="#0F172A"/>
+      <stop offset="100%" stop-color="#1A1F35"/>
     </linearGradient>
 
-    <!-- Warm glow orbs for depth -->
+    <!-- Warm orange glow orbs for atmosphere (visible but not overpowering) -->
     <radialGradient id="glowTL" cx="50%" cy="50%" r="50%">
-      <stop offset="0%"   stop-color="#FDBA74" stop-opacity="0.55"/>
-      <stop offset="100%" stop-color="#FDBA74" stop-opacity="0"/>
-    </radialGradient>
-    <radialGradient id="glowR" cx="50%" cy="50%" r="50%">
-      <stop offset="0%"   stop-color="#F97316" stop-opacity="0.35"/>
+      <stop offset="0%"   stop-color="#F97316" stop-opacity="0.28"/>
       <stop offset="100%" stop-color="#F97316" stop-opacity="0"/>
     </radialGradient>
+    <radialGradient id="glowR" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"   stop-color="#FB923C" stop-opacity="0.20"/>
+      <stop offset="100%" stop-color="#FB923C" stop-opacity="0"/>
+    </radialGradient>
     <radialGradient id="glowB" cx="50%" cy="50%" r="50%">
-      <stop offset="0%"   stop-color="#EA580C" stop-opacity="0.20"/>
-      <stop offset="100%" stop-color="#EA580C" stop-opacity="0"/>
+      <stop offset="0%"   stop-color="#C2410C" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#C2410C" stop-opacity="0"/>
     </radialGradient>
 
-    <!-- Subtle dot texture -->
-    <pattern id="dots" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
-      <circle cx="10" cy="10" r="1" fill="#C2410C" opacity="0.09"/>
+    <!-- Very subtle dot texture for depth -->
+    <pattern id="dots" x="0" y="0" width="22" height="22" patternUnits="userSpaceOnUse">
+      <circle cx="11" cy="11" r="1" fill="#FDBA74" opacity="0.06"/>
     </pattern>
 
-    <!-- Gradient accent bar at top -->
+    <!-- Orange gradient accent bar at top -->
     <linearGradient id="accentBar" x1="0%" y1="0%" x2="100%" y2="0%">
       <stop offset="0%"   stop-color="#FDBA74"/>
       <stop offset="50%"  stop-color="#F97316"/>
@@ -43,23 +42,17 @@
       <stop offset="100%" stop-color="#C2410C"/>
     </linearGradient>
 
-    <!-- Wordmark gradient (dark with warm hint) -->
-    <linearGradient id="wordmarkGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%"   stop-color="#0F172A"/>
-      <stop offset="100%" stop-color="#1E293B"/>
+    <!-- Wordmark: warm orange gradient — Switchyard's signature -->
+    <linearGradient id="wordmarkGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"   stop-color="#FDBA74"/>
+      <stop offset="100%" stop-color="#F97316"/>
     </linearGradient>
 
-    <!-- Primary badge gradient (warm) -->
-    <linearGradient id="badgeFill" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%"   stop-color="#FFF7ED"/>
-      <stop offset="100%" stop-color="#FED7AA"/>
-    </linearGradient>
-
-    <!-- Strong drop shadow to LIFT the white tile off the warm background -->
+    <!-- Strong drop shadow to lift the white tile off the dark background -->
     <filter id="tileFloat" x="-40%" y="-40%" width="180%" height="180%">
-      <feGaussianBlur in="SourceAlpha" stdDeviation="7"/>
-      <feOffset dx="0" dy="5"/>
-      <feComponentTransfer><feFuncA type="linear" slope="0.28"/></feComponentTransfer>
+      <feGaussianBlur in="SourceAlpha" stdDeviation="8"/>
+      <feOffset dx="0" dy="4"/>
+      <feComponentTransfer><feFuncA type="linear" slope="0.45"/></feComponentTransfer>
       <feMerge>
         <feMergeNode/>
         <feMergeNode in="SourceGraphic"/>
@@ -79,21 +72,20 @@
   </defs>
 
   <g clip-path="url(#rounded)">
-    <!-- ─────────────── WARM LAYERED BACKGROUND ─────────────── -->
+    <!-- ─────────────── DARK NAVY BACKGROUND ─────────────── -->
     <rect width="860" height="200" fill="url(#baseGrad)"/>
     <rect width="860" height="200" fill="url(#dots)"/>
-    <ellipse cx="120" cy="40"  rx="260" ry="140" fill="url(#glowTL)"/>
-    <ellipse cx="720" cy="120" rx="280" ry="150" fill="url(#glowR)"/>
+    <ellipse cx="130" cy="40"  rx="280" ry="150" fill="url(#glowTL)"/>
+    <ellipse cx="720" cy="130" rx="280" ry="150" fill="url(#glowR)"/>
     <ellipse cx="430" cy="220" rx="400" ry="130" fill="url(#glowB)"/>
 
-    <!-- Hair-thin border -->
-    <rect x="0.5" y="0.5" width="859" height="199" rx="12" fill="none" stroke="#F59E0B" stroke-opacity="0.35" stroke-width="1"/>
+    <!-- Subtle warm border -->
+    <rect x="0.5" y="0.5" width="859" height="199" rx="12" fill="none" stroke="#F97316" stroke-opacity="0.25" stroke-width="1"/>
 
     <!-- Gradient accent bar at very top -->
     <rect x="0" y="0" width="860" height="3" fill="url(#accentBar)"/>
 
-    <!-- ─────────────── WHITE LOGO CARD ─────────────── -->
-    <!-- White floating card with strong drop shadow — high contrast against warm background -->
+    <!-- ─────────────── WHITE FLOATING LOGO CARD ─────────────── -->
     <g filter="url(#tileFloat)">
       <rect x="42" y="42" width="116" height="116" rx="20" fill="#FFFFFF"/>
     </g>
@@ -108,33 +100,37 @@
           stroke-linecap="round" stroke-linejoin="round"
           fill="none" filter="url(#chevShadow)"/>
 
-    <!-- Vertical divider -->
-    <line x1="186" y1="60" x2="186" y2="140" stroke="#F59E0B" stroke-opacity="0.3" stroke-width="1"/>
+    <!-- Vertical divider — warm accent -->
+    <line x1="186" y1="60" x2="186" y2="140" stroke="#F97316" stroke-opacity="0.35" stroke-width="1"/>
 
-    <!-- ─────────────── WORDMARK ─────────────── -->
+    <!-- ─────────────── WORDMARK — WARM ORANGE GRADIENT ─────────────── -->
     <text x="212" y="98"
           font-family="'Inter', 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif"
-          font-size="48" font-weight="700" fill="url(#wordmarkGrad)" letter-spacing="-1.2">
+          font-size="52" font-weight="800" fill="url(#wordmarkGrad)" letter-spacing="-1.2">
       Switchyard
     </text>
 
     <text x="214" y="128"
           font-family="'Inter', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif"
-          font-size="13.5" font-weight="500" fill="#78350F" letter-spacing="0.4">
+          font-size="13.5" font-weight="400" fill="#94A3B8" letter-spacing="0.5">
       HTTP/HTTPS reverse proxy · io_uring · kTLS · C++20
     </text>
 
     <!-- ─────────────── RIGHT SIDE BADGES ─────────────── -->
-    <rect x="672" y="72" width="72" height="28" rx="6" fill="#FFFFFF" stroke="#FDBA74" stroke-opacity="0.5" stroke-width="1"/>
+    <!-- Neutral dark chips like PodOptix's v0.1.0 / MIT -->
+    <rect x="672" y="72" width="72" height="28" rx="6" fill="#1E293B" stroke="#334155" stroke-width="1"/>
     <text x="708" y="86" font-family="'JetBrains Mono', 'SF Mono', 'Fira Code', monospace"
-          font-size="11" fill="#475569" text-anchor="middle" dominant-baseline="central">v0.1.0</text>
+          font-size="11" fill="#94A3B8" text-anchor="middle" dominant-baseline="central">v0.1.0</text>
 
-    <rect x="752" y="72" width="60" height="28" rx="6" fill="#FFFFFF" stroke="#FDBA74" stroke-opacity="0.5" stroke-width="1"/>
+    <rect x="752" y="72" width="60" height="28" rx="6" fill="#1E293B" stroke="#334155" stroke-width="1"/>
     <text x="782" y="86" font-family="'JetBrains Mono', 'SF Mono', 'Fira Code', monospace"
-          font-size="11" fill="#475569" text-anchor="middle" dominant-baseline="central">MIT</text>
+          font-size="11" fill="#94A3B8" text-anchor="middle" dominant-baseline="central">MIT</text>
 
-    <rect x="672" y="108" width="140" height="28" rx="6" fill="url(#badgeFill)" stroke="#F97316" stroke-width="1"/>
+    <!-- Primary badge — orange outlined against dark, like PodOptix's "Built with Go" -->
+    <rect x="672" y="108" width="140" height="28" rx="6"
+          fill="#F97316" fill-opacity="0.12"
+          stroke="#F97316" stroke-width="1" stroke-opacity="0.7"/>
     <text x="742" y="122" font-family="'JetBrains Mono', 'SF Mono', 'Fira Code', monospace"
-          font-size="11" font-weight="600" fill="#9A3412" text-anchor="middle" dominant-baseline="central">C++20 · Linux</text>
+          font-size="11" font-weight="600" fill="#FDBA74" text-anchor="middle" dominant-baseline="central">C++20 · Linux</text>
   </g>
 </svg>
