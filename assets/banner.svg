@@ -4,10 +4,10 @@
       <rect width="860" height="200" rx="12"/>
     </clipPath>
 
-    <!-- Dark navy base with subtle warmth -->
+    <!-- Deep espresso base — warm-dark that suits Switchyard's orange brand -->
     <linearGradient id="baseGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%"   stop-color="#0F172A"/>
-      <stop offset="100%" stop-color="#1A1F35"/>
+      <stop offset="0%"   stop-color="#1F1611"/>
+      <stop offset="100%" stop-color="#2B1F17"/>
     </linearGradient>
 
     <!-- Warm orange glow orbs for atmosphere (visible but not overpowering) -->
@@ -118,11 +118,11 @@
 
     <!-- ─────────────── RIGHT SIDE BADGES ─────────────── -->
     <!-- Neutral dark chips like PodOptix's v0.1.0 / MIT -->
-    <rect x="672" y="72" width="72" height="28" rx="6" fill="#1E293B" stroke="#334155" stroke-width="1"/>
+    <rect x="672" y="72" width="72" height="28" rx="6" fill="#2A1F17" stroke="#4A3626" stroke-width="1"/>
     <text x="708" y="86" font-family="'JetBrains Mono', 'SF Mono', 'Fira Code', monospace"
           font-size="11" fill="#94A3B8" text-anchor="middle" dominant-baseline="central">v0.1.0</text>
 
-    <rect x="752" y="72" width="60" height="28" rx="6" fill="#1E293B" stroke="#334155" stroke-width="1"/>
+    <rect x="752" y="72" width="60" height="28" rx="6" fill="#2A1F17" stroke="#4A3626" stroke-width="1"/>
     <text x="782" y="86" font-family="'JetBrains Mono', 'SF Mono', 'Fira Code', monospace"
           font-size="11" fill="#94A3B8" text-anchor="middle" dominant-baseline="central">MIT</text>
 
