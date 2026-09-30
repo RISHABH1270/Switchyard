@@ -29,7 +29,22 @@ Every operating system splits into two worlds — the **kernel** and **userspace
 | **User space** | The memory area (stack, heap, code, shared libraries — all backed by physical RAM) where all user-mode applications (nginx, your app, this proxy) run. Separated from kernel space to prevent applications from directly touching critical system resources. |
 | **System call** (`syscall`) | The interface that lets a user program request services from the kernel — read a byte from the network, send one back, open a file. Each syscall is a **boundary crossing** between userspace and kernel, and each crossing costs CPU cycles. |
 
-When data flows through a program, it usually gets copied (`memcpy`) from kernel memory into the program's memory, then copied back out. **Every byte, twice.**
+**Two different flows:**
+
+**1. Program code loading** (one-time, at process start):
+
+```
+userspace ──syscall──▶ kernel ──reads from disk──▶ back to userspace RAM (code / heap / stack)
+```
+
+**2. Network data flow** (every request, at runtime):
+
+```
+Reading (recv):   NIC ──▶ kernel buffer ──memcpy──▶ userspace buffer
+Writing (send):   userspace buffer ──memcpy──▶ kernel buffer ──▶ NIC
+```
+
+This is the flow that eats CPU on a busy proxy — **every byte crosses the boundary twice.**
 
 Now the punchline: **a reverse proxy does almost nothing *except* shuffle traffic between sockets.** So on a busy proxy, syscalls and `memcpy` **are** the workload. Get them wrong and 30-50% of your CPU disappears into the plumbing itself — not routing, not TLS, not health checks. Just moving bytes back and forth across the kernel/userspace boundary.
 
