@@ -34,19 +34,21 @@ Every operating system splits into two worlds — the **kernel** and **userspace
 **1. Program code loading** (one-time, at process start):
 
 ```
-userspace ──syscall──▶ kernel ──reads from disk──▶ back to userspace RAM (code / heap / stack)
+userspace ── syscall──▶ kernel ── reads from disk──▶ back to userspace RAM (code / heap / stack)
 ```
 
 **2. Network data flow** (every request, at runtime):
 
 ```
-Reading (recv):   NIC ──▶ kernel buffer ──memcpy──▶ userspace buffer
-Writing (send):   userspace buffer ──memcpy──▶ kernel buffer ──▶ NIC
+Reading (recv):   NIC ──▶ kernel buffer ── memcpy──▶ userspace buffer
+Writing (send):   userspace buffer ── memcpy──▶ kernel buffer ──▶ NIC
 ```
 
 This is the flow that eats CPU on a busy proxy — **every byte crosses the boundary twice.**
 
-Now the punchline: **a reverse proxy does almost nothing *except* shuffle traffic between sockets.** So on a busy proxy, syscalls and `memcpy` **are** the workload. Get them wrong and 30-50% of your CPU disappears into the plumbing itself — not routing, not TLS, not health checks. Just moving bytes back and forth across the kernel/userspace boundary.
+Yes — ultimately, both kernel buffers and user-space buffers are stored in the same physical RAM. The kernel/userspace split is a protection boundary in software, not a separate hardware region.
+
+**A reverse proxy is essentially a program that forwards traffic between sockets.** So on a busy proxy, syscalls and `memcpy` **are** the workload. Get them wrong and 30-50% of your CPU disappears into the plumbing itself — not routing, not TLS, not health checks. Just moving bytes back and forth across the kernel/userspace boundary.
 
 That's exactly what nginx, HAProxy, and Envoy do today. All three were designed when **1 Gbps was fast** (nginx: 2004). At the time the kernel had nothing better than `epoll` for waiting on sockets, no way to do TLS inside the kernel, and no way to avoid the copies. Every byte still makes the round trip. Every request still pays 4-6 syscalls.
 
